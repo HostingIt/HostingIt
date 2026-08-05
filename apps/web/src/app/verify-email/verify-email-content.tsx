@@ -15,21 +15,28 @@ import {
 export function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const [status, setStatus] = useState<"loading" | "success" | "error">(
-    "loading"
+  const [status, setStatus] = useState<"loading" | "success" | "error">(() =>
+    token ? "loading" : "error"
   );
 
   useEffect(() => {
-    if (!token) {
-      setStatus("error");
-      return;
-    }
+    if (!token) return;
+
+    let cancelled = false;
 
     fetch(`/api/auth/verify-email?token=${token}`)
       .then((res) => {
-        setStatus(res.ok ? "success" : "error");
+        if (!cancelled) {
+          setStatus(res.ok ? "success" : "error");
+        }
       })
-      .catch(() => setStatus("error"));
+      .catch(() => {
+        if (!cancelled) setStatus("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   return (
