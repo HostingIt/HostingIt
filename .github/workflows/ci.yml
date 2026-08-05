@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-typecheck:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run typecheck
+
+  build:
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build --workspace=apps/web
+        env:
+          DATABASE_URL: postgresql://hostingit:hostingit@localhost:5432/hostingit
+          AUTH_SECRET: ci-build-secret-not-for-production
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          NEXT_PUBLIC_BASE_DOMAIN: example.com
