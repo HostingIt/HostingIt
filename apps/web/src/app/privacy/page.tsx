@@ -7,8 +7,10 @@ export default function PrivacyPage() {
       <div className="prose prose-zinc mt-12 max-w-none">
         <h2>Information we collect</h2>
         <ul>
-          <li>Account information: email, name, password hash</li>
-          <li>GitHub OAuth tokens (to list and deploy your repositories)</li>
+          <li>Account information: email, name</li>
+          <li>OAuth provider IDs (GitHub, Google)</li>
+          <li>TOTP 2FA secret (encrypted at rest)</li>
+          <li>GitHub access tokens (to list and deploy your repositories)</li>
           <li>Payment reference notes for manual billing verification</li>
           <li>Application metadata: repo names, deployment logs</li>
         </ul>
@@ -21,8 +23,9 @@ export default function PrivacyPage() {
 
         <h2>Third parties</h2>
         <p>
-          We use Dokploy for deployments, GitHub for repository access, and Resend
-          for transactional email. We do not sell your data.
+          We use Dokploy for deployments, GitHub and Google for authentication,
+          and encrypted TOTP for two-factor authentication. We do not sell your
+          data.
         </p>
 
         <h2>Data retention</h2>

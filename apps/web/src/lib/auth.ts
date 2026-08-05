@@ -1,109 +1,104 @@
 import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
-import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { users } from "@/db/schema";
+import Google from "next-auth/providers/google";
+import {
+  handleOAuthUser,
+  parseGitHubProfile,
+  parseGoogleProfile,
+  getUserById,
+  getUserByProvider,
+} from "@/lib/oauth-user";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",
+    error: "/login",
   },
   providers: [
-    Credentials({
-      name: "credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
-
-        const email = credentials.email as string;
-        const password = credentials.password as string;
-
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, email.toLowerCase()))
-          .limit(1);
-
-        if (!user || !user.passwordHash) return null;
-        if (!user.emailVerified) return null;
-        if (user.accountStatus === "suspended") return null;
-
-        const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return null;
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          plan: user.plan,
-        };
-      },
-    }),
     GitHub({
       clientId: process.env.AUTH_GITHUB_ID,
       clientSecret: process.env.AUTH_GITHUB_SECRET,
       authorization: { params: { scope: "read:user repo" } },
     }),
+    Google({
+      clientId: process.env.AUTH_GOOGLE_ID,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET,
+    }),
   ],
   callbacks: {
-    async jwt({ token, user, account, profile }) {
-      if (user) {
-        token.id = user.id;
-        token.role = (user as { role?: string }).role ?? "user";
-        token.plan = (user as { plan?: string }).plan ?? "free";
+    async signIn({ account, profile }) {
+      if (!account || !profile) return false;
+
+      try {
+        if (account.provider === "github") {
+          const parsed = parseGitHubProfile(profile as Record<string, unknown>);
+          await handleOAuthUser("github", parsed, account.access_token);
+        } else if (account.provider === "google") {
+          const parsed = parseGoogleProfile(profile as Record<string, unknown>);
+          await handleOAuthUser("google", parsed, account.access_token);
+        } else {
+          return false;
+        }
+        return true;
+      } catch (error) {
+        if (error instanceof Error && error.message === "ACCOUNT_SUSPENDED") {
+          return "/login?error=suspended";
+        }
+        console.error("OAuth signIn error:", error);
+        return false;
+      }
+    },
+    async jwt({ token, account, profile, trigger, session }) {
+      if (account && profile) {
+        let dbUser = null;
+
+        if (account.provider === "github") {
+          const parsed = parseGitHubProfile(profile as Record<string, unknown>);
+          dbUser =
+            (await getUserByProvider("github", parsed.providerId)) ??
+            (await handleOAuthUser("github", parsed, account.access_token));
+        } else if (account.provider === "google") {
+          const parsed = parseGoogleProfile(profile as Record<string, unknown>);
+          dbUser =
+            (await getUserByProvider("google", parsed.providerId)) ??
+            (await handleOAuthUser("google", parsed, account.access_token));
+        }
+
+        if (dbUser) {
+          token.id = dbUser.id;
+          token.role = dbUser.role;
+          token.plan = dbUser.plan;
+          token.mfaEnrolled = !!(dbUser.totpSecret && dbUser.totpEnabled);
+          token.mfaVerified = false;
+        }
       }
 
-      if (account?.provider === "github" && profile) {
-        const githubId = profile.id?.toString();
-        const email =
-          profile.email ??
-          (profile as { login?: string }).login + "@users.noreply.github.com";
-
-        const [existing] = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, email.toLowerCase()))
-          .limit(1);
-
-        if (existing) {
-          await db
-            .update(users)
-            .set({
-              githubId,
-              githubAccessToken: account.access_token,
-              emailVerified: true,
-              updatedAt: new Date(),
-            })
-            .where(eq(users.id, existing.id));
-
-          token.id = existing.id;
-          token.role = existing.role;
-          token.plan = existing.plan;
-        } else {
-          const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
-          const [newUser] = await db
-            .insert(users)
-            .values({
-              email: email.toLowerCase(),
-              name: profile.name ?? (profile as { login?: string }).login,
-              emailVerified: true,
-              githubId,
-              githubAccessToken: account.access_token,
-              role: adminEmail === email.toLowerCase() ? "admin" : "user",
-            })
-            .returning();
-
-          token.id = newUser.id;
-          token.role = newUser.role;
-          token.plan = newUser.plan;
+      if (trigger === "update" && session) {
+        const updateSession = session as {
+          mfaVerified?: boolean;
+          mfaEnrolled?: boolean;
+        };
+        if (updateSession.mfaVerified === true) {
+          token.mfaVerified = true;
         }
+        if (updateSession.mfaEnrolled === true) {
+          token.mfaEnrolled = true;
+        }
+        if (token.id) {
+          const dbUser = await getUserById(token.id as string);
+          if (dbUser) {
+            token.mfaEnrolled = !!(dbUser.totpSecret && dbUser.totpEnabled);
+            token.role = dbUser.role;
+            token.plan = dbUser.plan;
+          }
+        }
+      }
+
+      if (token.id && token.mfaEnrolled === undefined) {
+        const dbUser = await getUserById(token.id as string);
+        token.mfaEnrolled = !!(dbUser?.totpSecret && dbUser?.totpEnabled);
+        token.mfaVerified = token.mfaVerified ?? false;
       }
 
       return token;
@@ -113,6 +108,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string;
         session.user.role = token.role as string;
         session.user.plan = token.plan as string;
+        session.user.mfaEnrolled = Boolean(token.mfaEnrolled);
+        session.user.mfaVerified = Boolean(token.mfaVerified);
       }
       return session;
     },

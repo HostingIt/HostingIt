@@ -6,6 +6,8 @@ declare module "next-auth" {
       id: string;
       role: string;
       plan: string;
+      mfaEnrolled: boolean;
+      mfaVerified: boolean;
     } & DefaultSession["user"];
   }
 
@@ -20,5 +22,19 @@ declare module "next-auth/jwt" {
     id?: string;
     role?: string;
     plan?: string;
+    mfaEnrolled?: boolean;
+    mfaVerified?: boolean;
+  }
+}
+
+declare module "next-auth/react" {
+  interface Session {
+    user: {
+      id: string;
+      role: string;
+      plan: string;
+      mfaEnrolled: boolean;
+      mfaVerified: boolean;
+    } & DefaultSession["user"];
   }
 }

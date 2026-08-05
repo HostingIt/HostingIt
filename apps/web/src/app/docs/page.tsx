@@ -9,8 +9,9 @@ export default function DocsPage() {
       <div className="prose prose-zinc mt-12 max-w-none">
         <h2>Quick start</h2>
         <ol>
-          <li>Create a free account and verify your email.</li>
-          <li>Connect your GitHub account from Settings or during app creation.</li>
+          <li>Create an account with GitHub or Google.</li>
+          <li>Complete mandatory 2FA setup on first login.</li>
+          <li>Connect GitHub from Settings if you signed in with Google.</li>
           <li>Click <strong>New App</strong>, select a repository and branch.</li>
           <li>HostingIt provisions your app on Dokploy and assigns a subdomain.</li>
           <li>Your app will be available at <code>your-app.yourdomain.com</code>.</li>

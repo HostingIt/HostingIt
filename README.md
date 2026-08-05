@@ -7,10 +7,9 @@ Managed Docker hosting for indie developers. Deploy GitHub repos to Dokploy with
 ## Stack
 
 - **Frontend/API:** Next.js 15 (App Router)
-- **Auth:** Auth.js (credentials + GitHub OAuth)
+- **Auth:** Auth.js (GitHub + Google OAuth, mandatory TOTP 2FA)
 - **Database:** PostgreSQL + Drizzle ORM
 - **Deploy backend:** Dokploy API
-- **Email:** Resend
 
 ## Project structure
 
@@ -62,11 +61,23 @@ Copy `.env.example` to `apps/web/.env.local`:
 | `DATABASE_URL` | PostgreSQL connection string |
 | `AUTH_SECRET` | Generate with `openssl rand -base64 32` |
 | `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | GitHub OAuth app credentials |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth app credentials |
 | `DOKPLOY_API_URL` | Your Dokploy instance URL |
 | `DOKPLOY_API_KEY` | Dokploy API key (server-side only) |
 | `NEXT_PUBLIC_BASE_DOMAIN` | Base domain for subdomains |
-| `ADMIN_EMAIL` | Bootstrap admin account email |
-| `RESEND_API_KEY` | Email verification (optional in dev) |
+| `ADMIN_EMAIL` | Bootstrap admin account email (must match OAuth email) |
+
+### OAuth callback URLs
+
+- GitHub: `{NEXT_PUBLIC_APP_URL}/api/auth/callback/github`
+- Google: `{NEXT_PUBLIC_APP_URL}/api/auth/callback/google`
+
+### Authentication flow
+
+1. Sign in with GitHub or Google
+2. First login: scan QR code and enroll mandatory 2FA (Google Authenticator / Authy)
+3. Every login: enter 6-digit TOTP code after OAuth
+4. Google-only users must connect GitHub in Settings to deploy repos
 
 ## Dokploy setup
 

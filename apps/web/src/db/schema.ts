@@ -54,6 +54,9 @@ export const users = pgTable("users", {
   dokployEnvironmentId: text("dokploy_environment_id"),
   githubId: text("github_id"),
   githubAccessToken: text("github_access_token"),
+  googleId: text("google_id"),
+  totpSecret: text("totp_secret"),
+  totpEnabled: boolean("totp_enabled").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
