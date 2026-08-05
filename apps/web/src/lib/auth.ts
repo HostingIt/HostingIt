@@ -3,10 +3,10 @@ import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 import {
   handleOAuthUser,
+  linkProviderToUser,
   parseGitHubProfile,
   parseGoogleProfile,
   getUserById,
-  getUserByProvider,
 } from "@/lib/oauth-user";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -31,12 +31,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!account || !profile) return false;
 
       try {
+        const session = await auth();
+        const isLinking = Boolean(session?.user?.id && session.user.mfaVerified);
+
         if (account.provider === "github") {
           const parsed = parseGitHubProfile(profile as Record<string, unknown>);
-          await handleOAuthUser("github", parsed, account.access_token);
+          if (isLinking) {
+            await linkProviderToUser(
+              session!.user!.id,
+              "github",
+              parsed,
+              account.access_token
+            );
+          } else {
+            await handleOAuthUser("github", parsed, account.access_token);
+          }
         } else if (account.provider === "google") {
           const parsed = parseGoogleProfile(profile as Record<string, unknown>);
-          await handleOAuthUser("google", parsed, account.access_token);
+          if (isLinking) {
+            await linkProviderToUser(
+              session!.user!.id,
+              "google",
+              parsed,
+              account.access_token
+            );
+          } else {
+            await handleOAuthUser("google", parsed, account.access_token);
+          }
         } else {
           return false;
         }
@@ -45,6 +66,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (error instanceof Error && error.message === "ACCOUNT_SUSPENDED") {
           return "/login?error=suspended";
         }
+        if (error instanceof Error && error.message === "PROVIDER_IN_USE") {
+          return "/dashboard/settings?error=provider_in_use";
+        }
         console.error("OAuth signIn error:", error);
         return false;
       }
@@ -52,17 +76,40 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, account, profile, trigger, session }) {
       if (account && profile) {
         let dbUser = null;
+        const isLinking = Boolean(token.id && token.mfaVerified);
 
         if (account.provider === "github") {
           const parsed = parseGitHubProfile(profile as Record<string, unknown>);
-          dbUser =
-            (await getUserByProvider("github", parsed.providerId)) ??
-            (await handleOAuthUser("github", parsed, account.access_token));
+          if (isLinking && token.id) {
+            dbUser = await linkProviderToUser(
+              token.id as string,
+              "github",
+              parsed,
+              account.access_token
+            );
+          } else {
+            dbUser = await handleOAuthUser(
+              "github",
+              parsed,
+              account.access_token
+            );
+          }
         } else if (account.provider === "google") {
           const parsed = parseGoogleProfile(profile as Record<string, unknown>);
-          dbUser =
-            (await getUserByProvider("google", parsed.providerId)) ??
-            (await handleOAuthUser("google", parsed, account.access_token));
+          if (isLinking && token.id) {
+            dbUser = await linkProviderToUser(
+              token.id as string,
+              "google",
+              parsed,
+              account.access_token
+            );
+          } else {
+            dbUser = await handleOAuthUser(
+              "google",
+              parsed,
+              account.access_token
+            );
+          }
         }
 
         if (dbUser) {
@@ -70,7 +117,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.role = dbUser.role;
           token.plan = dbUser.plan;
           token.mfaEnrolled = !!(dbUser.totpSecret && dbUser.totpEnabled);
-          token.mfaVerified = false;
+          token.mfaVerified = isLinking ? true : false;
         }
       }
 

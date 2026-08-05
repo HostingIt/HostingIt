@@ -137,6 +137,67 @@ export async function handleOAuthUser(
   return newUser;
 }
 
+export async function linkProviderToUser(
+  userId: string,
+  provider: OAuthProvider,
+  profile: OAuthProfile,
+  accessToken?: string | null
+): Promise<User> {
+  const [currentUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!currentUser) {
+    throw new Error("User not found");
+  }
+
+  if (currentUser.accountStatus === "suspended") {
+    throw new Error("ACCOUNT_SUSPENDED");
+  }
+
+  const [owner] = await db
+    .select()
+    .from(users)
+    .where(
+      provider === "github"
+        ? eq(users.githubId, profile.providerId)
+        : eq(users.googleId, profile.providerId)
+    )
+    .limit(1);
+
+  if (owner && owner.id !== userId) {
+    throw new Error("PROVIDER_IN_USE");
+  }
+
+  const linkUpdates: Partial<User> = {
+    emailVerified: true,
+    updatedAt: new Date(),
+  };
+
+  if (provider === "github") {
+    Object.assign(linkUpdates, {
+      githubId: profile.providerId,
+      githubAccessToken: accessToken ?? currentUser.githubAccessToken,
+    });
+  } else {
+    Object.assign(linkUpdates, { googleId: profile.providerId });
+  }
+
+  if (profile.name && !currentUser.name) {
+    Object.assign(linkUpdates, { name: profile.name });
+  }
+
+  const [linked] = await db
+    .update(users)
+    .set(linkUpdates)
+    .where(eq(users.id, userId))
+    .returning();
+
+  return linked;
+}
+
 export async function getUserById(id: string): Promise<User | null> {
   const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
   return user ?? null;

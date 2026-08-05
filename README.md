@@ -113,6 +113,16 @@ docker build -f apps/web/Dockerfile -t hostingit .
 
 Paid plans are activated manually via the admin panel after UPI/PayPal/bank payment.
 
+## Roadmap
+
+See [docs/FUTURE_PLANS.md](docs/FUTURE_PLANS.md) for upcoming work:
+
+- **HostingIt Infra** — team-scaled infrastructure for paid tiers
+- **Multi-setup** — multi-node routing, regions, central proxy
+- **Self-hosted** — bring your own server via HostingIt Agent (planned)
+
+Public roadmap page: `/docs/roadmap` when the panel is running.
+
 ## API health check
 
 ```

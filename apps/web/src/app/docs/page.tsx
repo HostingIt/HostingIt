@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function DocsPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-16">
@@ -42,6 +44,19 @@ export default function DocsPage() {
           HostingIt provides best-effort hosting for hobby projects and small
           applications. We do not guarantee 99.99% uptime. Do not use this
           platform for mission-critical production workloads.
+        </p>
+
+        <h2>Roadmap</h2>
+        <p>
+          We&apos;re scaling <strong>HostingIt Infra</strong> (team-managed
+          infrastructure for paid plans), multi-region hosts, and a{" "}
+          <strong>self-hosted</strong> option so you can deploy to your own
+          server from the same panel.
+        </p>
+        <p>
+          <Link href="/docs/roadmap" className="font-medium text-zinc-900 underline">
+            Read the full roadmap →
+          </Link>
         </p>
       </div>
     </div>

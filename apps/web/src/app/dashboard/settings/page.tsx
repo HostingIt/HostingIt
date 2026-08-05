@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +18,13 @@ interface UserProfile {
 }
 
 export default function SettingsPage() {
+  const searchParams = useSearchParams();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+
+  const linkError =
+    searchParams.get("error") === "provider_in_use"
+      ? "That provider is already linked to another account."
+      : null;
 
   useEffect(() => {
     fetch("/api/user/me")
@@ -29,6 +36,12 @@ export default function SettingsPage() {
     <div>
       <h1 className="text-3xl font-bold">Settings</h1>
       <p className="mt-1 text-zinc-600">Manage your account and integrations</p>
+
+      {linkError && (
+        <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-600">
+          {linkError}
+        </p>
+      )}
 
       <div className="mt-8 max-w-xl space-y-6">
         <Card>
