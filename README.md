@@ -1,6 +1,6 @@
 # HostingIt
 
-Managed Docker hosting for indie developers. Deploy GitHub repos to Dokploy with a simple control panel.
+Managed Docker hosting for indie developers. Deploy GitHub repos from a simple control panel — live URLs with SSL in minutes.
 
 > Best-effort hosting for hobby projects and small applications. Not suitable for mission-critical production workloads.
 
@@ -9,14 +9,14 @@ Managed Docker hosting for indie developers. Deploy GitHub repos to Dokploy with
 - **Frontend/API:** Next.js 15 (App Router)
 - **Auth:** Auth.js (GitHub + Google OAuth, mandatory TOTP 2FA)
 - **Database:** PostgreSQL + Drizzle ORM
-- **Deploy backend:** Dokploy API
+- **Deploy backend:** Platform API (internal)
 
 ## Project structure
 
 ```
 HostingIt/
 ├── apps/web/                 # Next.js control panel + marketing
-├── packages/dokploy-client/    # Typed Dokploy API wrapper
+├── packages/dokploy-client/    # Typed deploy platform API client (internal)
 ├── docker-compose.dev.yml    # Local Postgres + Redis
 └── .github/workflows/ci.yml
 ```
@@ -62,8 +62,8 @@ Copy `.env.example` to `apps/web/.env.local`:
 | `AUTH_SECRET` | Generate with `openssl rand -base64 32` |
 | `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` | GitHub OAuth app credentials |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth app credentials |
-| `DOKPLOY_API_URL` | Your Dokploy instance URL |
-| `DOKPLOY_API_KEY` | Dokploy API key (server-side only) |
+| `DOKPLOY_API_URL` | Deploy platform API URL (internal, server-side) |
+| `DOKPLOY_API_KEY` | Deploy platform API key (server-side only) |
 | `NEXT_PUBLIC_BASE_DOMAIN` | Base domain for subdomains |
 | `ADMIN_EMAIL` | Bootstrap admin account email (must match OAuth email) |
 
@@ -79,19 +79,19 @@ Copy `.env.example` to `apps/web/.env.local`:
 3. Every login: enter 6-digit TOTP code after OAuth
 4. Google-only users must connect GitHub in Settings to deploy repos
 
-## Dokploy setup
+## Platform setup (operators)
 
-1. Install Dokploy on Oracle Cloud Instance 1
-2. Generate an API key in Dokploy profile settings
-3. Connect GitHub in Dokploy settings (for repo pulls)
+1. Provision your deploy infrastructure on Oracle Cloud Instance 1
+2. Generate an API key in the platform admin settings
+3. Connect GitHub in the platform settings (for repo pulls)
 4. Set wildcard DNS: `*.yourdomain.com` → Instance 1
 5. Add `DOKPLOY_API_URL` and `DOKPLOY_API_KEY` to HostingIt env
 
 ## Deployment
 
-Deploy HostingIt to Oracle Cloud Instance 2 via Dokploy:
+Deploy the HostingIt control panel to Oracle Cloud Instance 2:
 
-1. Create a new Application in Dokploy pointing to this repo
+1. Create a new application pointing to this repo
 2. Set build path to `apps/web`
 3. Add all environment variables from `.env.example`
 4. Assign domain `panel.yourdomain.com`
@@ -119,7 +119,7 @@ Paid plans are activated manually via the admin panel after UPI/PayPal/bank paym
 GET /api/health
 ```
 
-Returns Dokploy connectivity status.
+Returns deploy platform connectivity status.
 
 ## License
 

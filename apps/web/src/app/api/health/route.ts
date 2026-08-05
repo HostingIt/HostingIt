@@ -8,7 +8,7 @@ export async function GET() {
   if (!hasConfig) {
     return NextResponse.json({
       status: "degraded",
-      dokploy: "not_configured",
+      deploy: "not_configured",
       database: Boolean(process.env.DATABASE_URL),
     });
   }
@@ -18,7 +18,7 @@ export async function GET() {
     await client.healthCheck();
     return NextResponse.json({
       status: "ok",
-      dokploy: "connected",
+      deploy: "connected",
       database: Boolean(process.env.DATABASE_URL),
     });
   } catch (error) {
@@ -27,7 +27,7 @@ export async function GET() {
     return NextResponse.json(
       {
         status: "degraded",
-        dokploy: "error",
+        deploy: "error",
         message,
         database: Boolean(process.env.DATABASE_URL),
       },

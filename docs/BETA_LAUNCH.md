@@ -14,7 +14,7 @@ I built HostingIt — a simple platform to deploy Docker apps from GitHub withou
 
 - Free tier: 1 app, subdomain + SSL
 - Connect GitHub → pick repo → get a live URL
-- Built on Dokploy + Oracle Always Free
+- Runs on cost-efficient infrastructure — hobby-tier pricing passed to you
 
 It's best-effort hosting for hobby projects and side apps — not trying to compete with Railway/Fly.io on scale.
 
@@ -26,9 +26,9 @@ Looking for 10–20 beta users to test the flow and give feedback. Free accounts
 
 ## Dev.to / Hashnode
 
-**Title:** I built a $0/month PaaS for indie developers using Dokploy and Oracle Free Tier
+**Title:** I built a $0/month PaaS for indie developers on free-tier cloud infrastructure
 
-Cover: motivation, architecture (Dokploy API + Next.js panel), honest limitations, call for beta testers.
+Cover: motivation, architecture (control panel + deploy backend), honest limitations, call for beta testers.
 
 ---
 
@@ -38,7 +38,7 @@ Shipped the MVP for HostingIt — deploy any Docker app from GitHub in minutes.
 
 Free tier for hobby projects. Looking for beta users.
 
-Best-effort hosting, not AWS. Built on @Dokploy + Oracle Free Tier.
+Best-effort hosting, not AWS. Simple platform for indie developers.
 
 [your-panel-url]
 

@@ -15,7 +15,7 @@ export default function TermsPage() {
         <h2>Acceptable use</h2>
         <p>
           You may not use HostingIt for illegal activities, spam, cryptocurrency
-          mining, or any activity that violates Oracle Cloud or Dokploy terms.
+          mining, or any activity that violates applicable cloud provider terms.
         </p>
 
         <h2>Uptime and availability</h2>

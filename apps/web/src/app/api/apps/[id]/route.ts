@@ -31,7 +31,7 @@ export async function GET(
     const dokploy = getDokployClient();
     logs = await dokploy.getApplicationLogs(app.dokployAppId);
   } catch {
-    logs = "Unable to fetch logs. Check Dokploy configuration.";
+    logs = "Unable to fetch logs. Try again later or contact support.";
   }
 
   return NextResponse.json({

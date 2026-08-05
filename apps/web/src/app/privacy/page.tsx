@@ -23,9 +23,9 @@ export default function PrivacyPage() {
 
         <h2>Third parties</h2>
         <p>
-          We use Dokploy for deployments, GitHub and Google for authentication,
-          and encrypted TOTP for two-factor authentication. We do not sell your
-          data.
+          We use our own deploy infrastructure for hosting, GitHub and Google for
+          authentication, and encrypted TOTP for two-factor authentication. We
+          do not sell your data.
         </p>
 
         <h2>Data retention</h2>

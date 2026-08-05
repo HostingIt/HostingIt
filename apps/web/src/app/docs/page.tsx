@@ -13,7 +13,7 @@ export default function DocsPage() {
           <li>Complete mandatory 2FA setup on first login.</li>
           <li>Connect GitHub from Settings if you signed in with Google.</li>
           <li>Click <strong>New App</strong>, select a repository and branch.</li>
-          <li>HostingIt provisions your app on Dokploy and assigns a subdomain.</li>
+          <li>HostingIt provisions your app and assigns a subdomain with SSL.</li>
           <li>Your app will be available at <code>your-app.yourdomain.com</code>.</li>
         </ol>
 
@@ -22,7 +22,7 @@ export default function DocsPage() {
           <li>Node.js (Express, Next.js, etc.)</li>
           <li>Python (Flask, FastAPI)</li>
           <li>Static sites</li>
-          <li>Any app with a Dockerfile or build config Dokploy supports</li>
+          <li>Any app with a Dockerfile or standard build configuration</li>
         </ul>
 
         <h2>Custom domains</h2>
@@ -33,8 +33,8 @@ export default function DocsPage() {
 
         <h2>Environment variables</h2>
         <p>
-          Set environment variables in Dokploy for now. In-dashboard env var
-          management is coming soon.
+          In-dashboard environment variable management is coming soon. Contact
+          support if you need env vars set for your app in the meantime.
         </p>
 
         <h2>Limitations</h2>
