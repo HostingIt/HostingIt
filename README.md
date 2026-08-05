@@ -32,7 +32,7 @@ HostingIt/
 
 ```bash
 # Clone and install
-git clone git@github.com:vegeta2op/HostingIt.git
+git clone git@github.com:HostingIt/HostingIt.git
 cd HostingIt
 npm install
 
