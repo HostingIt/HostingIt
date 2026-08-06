@@ -1,26 +1,49 @@
+# HostingIt control panel — build from repo root:
+#   docker build -f apps/web/Dockerfile \
+#     --build-arg NEXT_PUBLIC_APP_URL=https://hostingit.online \
+#     --build-arg NEXT_PUBLIC_BASE_DOMAIN=hostingit.online \
+#     --build-arg NEXT_PUBLIC_FREE_SUBDOMAIN_PREFIX=fhusr \
+#     -t hostingit .
+#
+# NEXT_PUBLIC_* must be set at build time (baked into the client bundle).
+
 FROM node:22-alpine AS base
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
 
 FROM base AS deps
-WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/dokploy-client/package.json ./packages/dokploy-client/
 RUN npm ci
 
 FROM base AS builder
-WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+ARG NEXT_PUBLIC_APP_URL=https://hostingit.online
+ARG NEXT_PUBLIC_BASE_DOMAIN=hostingit.online
+ARG NEXT_PUBLIC_FREE_SUBDOMAIN_PREFIX=fhusr
+
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_BASE_DOMAIN=$NEXT_PUBLIC_BASE_DOMAIN
+ENV NEXT_PUBLIC_FREE_SUBDOMAIN_PREFIX=$NEXT_PUBLIC_FREE_SUBDOMAIN_PREFIX
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+ENV DATABASE_URL=postgresql://build:build@localhost:5432/build
+ENV AUTH_SECRET=build-time-placeholder-not-used-at-runtime
+
 RUN npm run build --workspace=apps/web
 
 FROM base AS runner
-WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN apk add --no-cache wget \
+  && addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
@@ -28,7 +51,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/
 
 USER nextjs
 EXPOSE 3000
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/api/health || exit 1
 
 CMD ["node", "apps/web/server.js"]

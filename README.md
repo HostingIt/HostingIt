@@ -124,19 +124,23 @@ Users install the **HostingIt GitHub App** and grant repos. Deploys use short-li
 4. Set wildcard DNS: `*.yourdomain.com` → Instance 1
 5. Add `DOKPLOY_API_URL` and `DOKPLOY_API_KEY` to HostingIt env
 
-## Deployment
+## Deployment (production)
 
-Deploy the HostingIt control panel to Oracle Cloud Instance 2:
+Full guide: **[docs/DEPLOY.md](docs/DEPLOY.md)**
 
-1. Create a new application pointing to this repo
-2. Set build path to `apps/web`
-3. Add all environment variables from `.env.example`
-4. Assign domain `panel.yourdomain.com`
+Summary:
 
-Or use the included Dockerfile:
+1. Create Postgres for the panel → `npm run db:push` against it once  
+2. GitHub Actions publishes `ghcr.io/hostingit/hostingit:latest` on push to `main`  
+3. In Dokploy, create an app from that image (port **3000**) or build with `apps/web/Dockerfile` (context = repo root)  
+4. Set env vars from `.env.example` + domain + OAuth/GitHub App callbacks  
 
 ```bash
-docker build -f apps/web/Dockerfile -t hostingit .
+docker build -f apps/web/Dockerfile \
+  --build-arg NEXT_PUBLIC_APP_URL=https://hostingit.online \
+  --build-arg NEXT_PUBLIC_BASE_DOMAIN=hostingit.online \
+  --build-arg NEXT_PUBLIC_FREE_SUBDOMAIN_PREFIX=fhusr \
+  -t hostingit .
 ```
 
 ## Plans

@@ -10,6 +10,8 @@ import {
 } from "@/lib/oauth-user";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Required behind reverse proxies (Dokploy / Traefik / Cloudflare)
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",

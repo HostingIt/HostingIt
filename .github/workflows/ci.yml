@@ -42,5 +42,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://hostingit:hostingit@localhost:5432/hostingit
           AUTH_SECRET: ci-build-secret-not-for-production
+          AUTH_TRUST_HOST: "true"
           NEXT_PUBLIC_APP_URL: http://localhost:3000
           NEXT_PUBLIC_BASE_DOMAIN: example.com
+          NEXT_PUBLIC_FREE_SUBDOMAIN_PREFIX: fhusr
