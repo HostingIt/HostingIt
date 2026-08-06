@@ -1,25 +1,31 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-
-async function requireAdminSession() {
-  const session = await auth();
-  if (!session?.user?.id || session.user.role !== "admin") {
-    return null;
-  }
-  return session;
-}
+import { requireApiAdmin } from "@/lib/api-auth";
 
 export async function GET() {
-  const session = await requireAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const authResult = await requireApiAdmin();
+  if ("error" in authResult) return authResult.error;
 
-  const allUsers = await db.select().from(users);
+  const allUsers = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      plan: users.plan,
+      accountStatus: users.accountStatus,
+      role: users.role,
+      githubId: users.githubId,
+      googleId: users.googleId,
+      githubInstallationId: users.githubInstallationId,
+      totpEnabled: users.totpEnabled,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    })
+    .from(users);
+
   return NextResponse.json({ users: allUsers });
 }
 
@@ -30,10 +36,8 @@ const updateUserSchema = z.object({
 });
 
 export async function PATCH(request: Request) {
-  const session = await requireAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const authResult = await requireApiAdmin();
+  if ("error" in authResult) return authResult.error;
 
   const body = await request.json();
   const parsed = updateUserSchema.safeParse(body);

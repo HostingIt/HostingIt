@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { analyzeRepo } from "@/lib/repo-analyze";
+import { toClientError } from "@/lib/safe-error";
 
 const querySchema = z.object({
   owner: z.string().min(1).max(100),
@@ -58,7 +59,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Failed to analyze repository",
+          toClientError(error, "Failed to analyze repository"),
       },
       { status: 502 }
     );

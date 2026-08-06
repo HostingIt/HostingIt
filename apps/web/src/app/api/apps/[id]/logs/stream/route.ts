@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/session";
 import { getDokployClient } from "@/lib/dokploy";
 import { getOwnedApp } from "@/lib/app-access";
+import { assertDeploymentBelongsToApp } from "@/lib/deploy-log-access";
 import { sanitizeDeployLogs } from "@/lib/deploy-hints";
 import type { LogSince } from "@hostingit/dokploy-client";
 
@@ -66,6 +67,16 @@ export async function GET(
         try {
           let logs = "";
           if (type === "build" && deploymentId) {
+            const allowed = await assertDeploymentBelongsToApp(
+              dokploy,
+              app.id,
+              app.dokployAppId,
+              deploymentId
+            );
+            if (!allowed) {
+              send("stream-error", { message: "Deployment not found" });
+              return;
+            }
             logs = await dokploy.getDeploymentLogs(
               deploymentId,
               tail ? Number(tail) : undefined

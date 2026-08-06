@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { decryptSecret, verifyTotpCode } from "@/lib/totp";
+import { setMfaStampCookie } from "@/lib/mfa-stamp";
 
 const verifySchema = z.object({
   code: z.string().length(6),
@@ -45,6 +46,8 @@ export async function POST(request: Request) {
   if (!verifyTotpCode(secret, parsed.data.code)) {
     return NextResponse.json({ error: "Invalid code" }, { status: 401 });
   }
+
+  await setMfaStampCookie(session.user.id);
 
   return NextResponse.json({ success: true, mfaVerified: true });
 }

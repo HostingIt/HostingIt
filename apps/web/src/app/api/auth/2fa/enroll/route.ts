@@ -13,6 +13,7 @@ import {
   decryptPendingSecret,
   verifyTotpCode,
 } from "@/lib/totp";
+import { setMfaStampCookie } from "@/lib/mfa-stamp";
 
 const PENDING_COOKIE = "pending_totp_secret";
 const PENDING_MAX_AGE = 600;
@@ -110,6 +111,7 @@ export async function POST(request: Request) {
     .where(eq(users.id, session.user.id));
 
   cookieStore.delete(PENDING_COOKIE);
+  await setMfaStampCookie(session.user.id);
 
   return NextResponse.json({ success: true, mfaEnrolled: true, mfaVerified: true });
 }

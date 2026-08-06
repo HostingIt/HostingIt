@@ -9,6 +9,7 @@ import { getOwnedApp } from "@/lib/app-access";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
 import { parseEnvString, serializeEnvVars } from "@/lib/env-vars";
 import { envVarListSchema } from "@/lib/env-var-schema";
+import { toClientError } from "@/lib/safe-error";
 
 export async function GET(
   _request: Request,
@@ -110,9 +111,7 @@ export async function PUT(
     return NextResponse.json(
       {
         error:
-          error instanceof Error
-            ? error.message
-            : "Failed to save environment variables",
+          toClientError(error, "Failed to save environment variables"),
       },
       { status: 500 }
     );

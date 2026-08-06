@@ -69,7 +69,8 @@ export default function Setup2FAPage() {
       return;
     }
 
-    await update({ mfaEnrolled: true, mfaVerified: true });
+    // Refresh JWT so it picks up enrollment + server MFA stamp
+    await update();
     router.push("/dashboard");
     router.refresh();
   }

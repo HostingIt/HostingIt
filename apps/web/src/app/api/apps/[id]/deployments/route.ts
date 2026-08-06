@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { getDokployClient } from "@/lib/dokploy";
 import { getOwnedApp } from "@/lib/app-access";
+import { toClientError } from "@/lib/safe-error";
 import {
   syncLocalDeployments,
   toDeploymentListItem,
@@ -40,9 +41,7 @@ export async function GET(
     return NextResponse.json(
       {
         error:
-          error instanceof Error
-            ? error.message
-            : "Failed to list deployments",
+          toClientError(error, "Failed to list deployments"),
       },
       { status: 500 }
     );

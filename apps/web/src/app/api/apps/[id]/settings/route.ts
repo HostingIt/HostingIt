@@ -8,6 +8,7 @@ import { getDokployClient } from "@/lib/dokploy";
 import { getOwnedApp } from "@/lib/app-access";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
 import { syncDokployGitSource } from "@/lib/deploy-git";
+import { toClientError } from "@/lib/safe-error";
 
 const buildTypes = [
   "nixpacks",
@@ -180,7 +181,7 @@ export async function PATCH(
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Failed to update settings",
+          toClientError(error, "Failed to update settings"),
       },
       { status: 500 }
     );

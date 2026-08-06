@@ -21,22 +21,27 @@ export async function GET(request: Request) {
   const setupAction = searchParams.get("setup_action");
   const state = searchParams.get("state");
 
-  if (!installationId) {
+  if (!installationId || !/^\d+$/.test(installationId)) {
     return NextResponse.redirect(
       appUrl("/dashboard/settings?error=github_app_missing_installation")
     );
   }
 
-  // Prefer signed state; fall back to current session if GitHub omitted state
-  const stateUserId = state ? verifyInstallState(state) : null;
-  if (state && !stateUserId) {
+  // Require signed state — never bind installations from a bare query param
+  if (!state) {
+    return NextResponse.redirect(
+      appUrl("/dashboard/settings?error=github_app_missing_state")
+    );
+  }
+
+  const stateUserId = verifyInstallState(state);
+  if (!stateUserId) {
     return NextResponse.redirect(
       appUrl("/dashboard/settings?error=github_app_invalid_state")
     );
   }
 
-  const userId = stateUserId ?? session.user.id;
-  if (userId !== session.user.id) {
+  if (stateUserId !== session.user.id) {
     return NextResponse.redirect(
       appUrl("/dashboard/settings?error=github_app_wrong_user")
     );
@@ -54,7 +59,7 @@ export async function GET(request: Request) {
       githubInstallationId: installationId,
       updatedAt: new Date(),
     })
-    .where(eq(users.id, userId));
+    .where(eq(users.id, stateUserId));
 
   const redirectTo = appUrl("/dashboard/apps/new");
   redirectTo.searchParams.set("github_app", "installed");

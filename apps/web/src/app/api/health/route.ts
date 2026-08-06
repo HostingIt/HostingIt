@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
-import { createDokployClient, DokployError } from "@hostingit/dokploy-client";
+import { createDokployClient } from "@hostingit/dokploy-client";
 
+/** Public liveness — no upstream error details. */
 export async function GET() {
   const hasConfig =
     Boolean(process.env.DOKPLOY_API_URL) && Boolean(process.env.DOKPLOY_API_KEY);
+  const hasDb = Boolean(process.env.DATABASE_URL);
 
   if (!hasConfig) {
     return NextResponse.json({
       status: "degraded",
       deploy: "not_configured",
-      database: Boolean(process.env.DATABASE_URL),
+      database: hasDb,
     });
   }
 
@@ -19,17 +21,14 @@ export async function GET() {
     return NextResponse.json({
       status: "ok",
       deploy: "connected",
-      database: Boolean(process.env.DATABASE_URL),
+      database: hasDb,
     });
-  } catch (error) {
-    const message =
-      error instanceof DokployError ? error.message : "Unknown error";
+  } catch {
     return NextResponse.json(
       {
         status: "degraded",
         deploy: "error",
-        message,
-        database: Boolean(process.env.DATABASE_URL),
+        database: hasDb,
       },
       { status: 503 }
     );

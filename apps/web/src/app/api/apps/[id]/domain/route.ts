@@ -7,8 +7,17 @@ import { apps } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
 import { canUseCustomDomain } from "@/lib/plans";
 
+const HOSTNAME_RE =
+  /^(?=.{1,253}$)(?!-)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.(?!-)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
+
 const domainSchema = z.object({
-  domain: z.string().min(3),
+  domain: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .refine((d) => HOSTNAME_RE.test(d), "Invalid hostname")
+    .refine((d) => !/^\d+\.\d+\.\d+\.\d+$/.test(d), "IP addresses not allowed")
+    .refine((d) => !d.endsWith(".local") && !d.endsWith(".internal"), "Invalid TLD"),
 });
 
 export async function POST(

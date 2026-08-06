@@ -8,6 +8,7 @@ import {
   parseGoogleProfile,
   getUserById,
 } from "@/lib/oauth-user";
+import { clearMfaStampCookie, readMfaStampVerified } from "@/lib/mfa-stamp";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Required behind reverse proxies (Dokploy / Traefik / Cloudflare)
@@ -70,13 +71,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return false;
       }
     },
-    async jwt({ token, account, profile, trigger, session }) {
+    async jwt({ token, account, profile, trigger }) {
       if (account && profile) {
         let dbUser = null;
         const isLinking = Boolean(token.id && token.mfaVerified);
 
         if (isLinking && token.id) {
-          // signIn callback already linked — refresh user once
           dbUser = await getUserById(token.id as string);
         } else if (account.provider === "github") {
           const parsed = parseGitHubProfile(profile as Record<string, unknown>);
@@ -85,6 +85,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             parsed,
             account.access_token
           );
+          // Fresh login — drop prior MFA stamp
+          token.mfaVerified = false;
+          try {
+            await clearMfaStampCookie();
+          } catch {
+            // ignore (edge / no cookie store)
+          }
         } else if (account.provider === "google") {
           const parsed = parseGoogleProfile(profile as Record<string, unknown>);
           dbUser = await handleOAuthUser(
@@ -92,35 +99,41 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             parsed,
             account.access_token
           );
+          token.mfaVerified = false;
+          try {
+            await clearMfaStampCookie();
+          } catch {
+            // ignore
+          }
         }
 
         if (dbUser) {
           token.id = dbUser.id;
           token.role = dbUser.role;
           token.plan = dbUser.plan;
+          token.accountStatus = dbUser.accountStatus;
           token.mfaEnrolled = !!(dbUser.totpSecret && dbUser.totpEnabled);
-          token.mfaVerified = isLinking ? true : false;
+          if (!isLinking) {
+            token.mfaVerified = false;
+          }
         }
       }
 
-      if (trigger === "update" && session) {
-        const updateSession = session as {
-          mfaVerified?: boolean;
-          mfaEnrolled?: boolean;
-        };
-        if (updateSession.mfaVerified === true) {
+      if (trigger === "update" && token.id) {
+        // Never trust client-provided mfaVerified — only DB + signed stamp
+        const dbUser = await getUserById(token.id as string);
+        if (dbUser) {
+          token.mfaEnrolled = !!(dbUser.totpSecret && dbUser.totpEnabled);
+          token.role = dbUser.role;
+          token.plan = dbUser.plan;
+          token.accountStatus = dbUser.accountStatus;
+        }
+      }
+
+      if (token.id) {
+        const stamped = await readMfaStampVerified(token.id as string);
+        if (stamped) {
           token.mfaVerified = true;
-        }
-        if (updateSession.mfaEnrolled === true) {
-          token.mfaEnrolled = true;
-        }
-        if (token.id) {
-          const dbUser = await getUserById(token.id as string);
-          if (dbUser) {
-            token.mfaEnrolled = !!(dbUser.totpSecret && dbUser.totpEnabled);
-            token.role = dbUser.role;
-            token.plan = dbUser.plan;
-          }
         }
       }
 
@@ -133,6 +146,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.plan = token.plan as string;
         session.user.mfaEnrolled = Boolean(token.mfaEnrolled);
         session.user.mfaVerified = Boolean(token.mfaVerified);
+        session.user.accountStatus = (token.accountStatus as string) ?? "active";
       }
       return session;
     },

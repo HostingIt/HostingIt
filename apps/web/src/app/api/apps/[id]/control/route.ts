@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { apps } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
+import { toClientError } from "@/lib/safe-error";
 
 const controlSchema = z.object({
   action: z.enum(["start", "stop", "restart", "cancel"]),
@@ -79,7 +80,7 @@ export async function POST(
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : `Failed to ${action} application`,
+          toClientError(error, `Failed to ${action} application`),
       },
       { status: 500 }
     );

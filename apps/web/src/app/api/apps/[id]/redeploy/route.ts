@@ -6,6 +6,7 @@ import { apps, deployments, users } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
 import { syncDokployGitSource } from "@/lib/deploy-git";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
+import { toClientError } from "@/lib/safe-error";
 
 export async function POST(
   _request: Request,
@@ -80,7 +81,7 @@ export async function POST(
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Failed to redeploy application",
+          toClientError(error, "Failed to redeploy application"),
       },
       { status: 500 }
     );

@@ -1,19 +1,27 @@
-import { DefaultSession } from "next-auth";
+import "next-auth";
+import "next-auth/jwt";
 
 declare module "next-auth" {
+  interface User {
+    role?: string;
+    plan?: string;
+    mfaEnrolled?: boolean;
+    mfaVerified?: boolean;
+    accountStatus?: string;
+  }
+
   interface Session {
     user: {
       id: string;
+      email?: string | null;
+      name?: string | null;
+      image?: string | null;
       role: string;
       plan: string;
       mfaEnrolled: boolean;
       mfaVerified: boolean;
-    } & DefaultSession["user"];
-  }
-
-  interface User {
-    role?: string;
-    plan?: string;
+      accountStatus: string;
+    };
   }
 }
 
@@ -24,17 +32,6 @@ declare module "next-auth/jwt" {
     plan?: string;
     mfaEnrolled?: boolean;
     mfaVerified?: boolean;
-  }
-}
-
-declare module "next-auth/react" {
-  interface Session {
-    user: {
-      id: string;
-      role: string;
-      plan: string;
-      mfaEnrolled: boolean;
-      mfaVerified: boolean;
-    } & DefaultSession["user"];
+    accountStatus?: string;
   }
 }

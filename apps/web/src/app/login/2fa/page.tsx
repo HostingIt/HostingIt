@@ -41,7 +41,8 @@ export default function Login2FAPage() {
       return;
     }
 
-    await update({ mfaVerified: true });
+    // Refresh JWT so it picks up the server-set MFA stamp cookie
+    await update();
     router.push("/dashboard");
     router.refresh();
   }

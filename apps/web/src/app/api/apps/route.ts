@@ -16,6 +16,7 @@ import { envVarListSchema } from "@/lib/env-var-schema";
 import { syncDokployGitSource } from "@/lib/deploy-git";
 import { ensureUserDokployEnvironment } from "@/lib/dokploy-user";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
+import { toClientError } from "@/lib/safe-error";
 
 const createAppSchema = z.object({
   name: z.string().min(1).max(63),
@@ -258,7 +259,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Failed to create application",
+          toClientError(error, "Failed to create application"),
       },
       { status: 500 }
     );
