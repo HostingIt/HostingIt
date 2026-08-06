@@ -19,8 +19,8 @@ export default async function PricingPage() {
             Simple, predictable pricing
           </h1>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-            Flat monthly plans — no RAM meters, no CPU surprises. Start free,
-            upgrade to Pro when you need more apps and custom domains.
+            Flat monthly plans — no RAM meters, no CPU surprises. Free is
+            available now; Pro paid upgrades are coming soon.
           </p>
           {isLoggedIn && (
             <p className="mt-4 text-sm text-muted">
@@ -38,9 +38,8 @@ export default async function PricingPage() {
         <PlanCardsSection />
 
         <p className="mt-8 text-center text-sm text-muted">
-          Pro is activated manually after payment verification (UPI, PayPal, or
-          bank transfer). Enterprise is on the roadmap for dedicated
-          infrastructure.
+          Only the Free plan is open right now. Pro and Enterprise billing will
+          unlock later — no payment flow yet.
         </p>
 
         <RailwayComparison />

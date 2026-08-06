@@ -41,7 +41,7 @@ export const PLANS: Record<Plan, PlanConfig> = {
     name: "Pro",
     price: 10,
     priceLabel: "$10/mo",
-    priceNote: "₹799/mo · flat rate",
+    priceNote: "coming soon",
     maxApps: 5,
     ramMb: 512,
     cpuLimit: 0.5,
@@ -56,7 +56,7 @@ export const PLANS: Record<Plan, PlanConfig> = {
       "Email support",
       "No usage overage surprises",
     ],
-    highlight: true,
+    comingSoon: true,
   },
   enterprise: {
     name: "Enterprise",
@@ -98,7 +98,11 @@ export function getPlanConfig(plan: string): PlanConfig {
   return PLANS[normalizePlan(plan)];
 }
 
-export const PURCHASABLE_PLANS: Plan[] = ["pro"];
+/** Empty while paid upgrades are disabled (Pro shows as coming soon). */
+export const PURCHASABLE_PLANS: Plan[] = [];
+
+/** Flip to true when manual UPI/PayPal/bank upgrades should accept submissions again. */
+export const PAYMENTS_ENABLED = false;
 
 export interface ComparisonRow {
   label: string;

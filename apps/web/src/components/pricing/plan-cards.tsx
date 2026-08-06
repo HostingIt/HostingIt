@@ -38,21 +38,19 @@ export function PlanCards({
               isCurrent && "ring-2 ring-accent/40"
             )}
           >
-            {plan.highlight && !isCurrent && (
-              <span className="absolute -top-2.5 left-4 bg-accent px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-white">
-                Popular
-              </span>
-            )}
-            {isCurrent && (
+            {isCurrent ? (
               <span className="absolute -top-2.5 left-4 bg-ink px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-background">
                 Current plan
               </span>
-            )}
-            {plan.comingSoon && (
+            ) : plan.comingSoon ? (
               <span className="absolute -top-2.5 left-4 border border-border bg-background px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-muted">
-                Soon
+                Coming soon
               </span>
-            )}
+            ) : plan.highlight ? (
+              <span className="absolute -top-2.5 left-4 bg-accent px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-white">
+                Popular
+              </span>
+            ) : null}
 
             <h2 className="font-display text-xl font-semibold text-ink">
               {plan.name}

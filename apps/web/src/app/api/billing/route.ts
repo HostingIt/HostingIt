@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { paymentRequests } from "@/db/schema";
-import { PLANS } from "@/lib/plans";
+import { PAYMENTS_ENABLED, PLANS } from "@/lib/plans";
 
 const paymentSchema = z.object({
   plan: z.enum(["pro"]),
@@ -38,6 +38,13 @@ export async function POST(request: Request) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!PAYMENTS_ENABLED) {
+    return NextResponse.json(
+      { error: "Paid plans are coming soon. Stick with Free for now." },
+      { status: 503 }
+    );
   }
 
   try {

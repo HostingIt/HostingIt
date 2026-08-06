@@ -158,8 +158,7 @@ export default function HomePage() {
                 Flat pricing
               </h2>
               <p className="mt-3 max-w-md text-muted">
-                Free to try one app. Pro when you need more apps and custom
-                domains.
+                Free is open now. Pro billing is coming soon.
               </p>
             </div>
             <Link href="/pricing">
@@ -184,8 +183,8 @@ export default function HomePage() {
             Ship something this weekend
           </h2>
           <p className="mx-auto mt-3 max-w-md text-muted">
-            Start on Free — one deployable app, subdomain, SSL. Upgrade when
-            you need more.
+            Start on Free — one deployable app, subdomain, SSL. Pro upgrades
+            coming soon.
           </p>
           <div className="mt-8">
             <Link href="/signup">
