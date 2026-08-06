@@ -1,11 +1,15 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { eq } from "drizzle-orm";
+import { requireAuth } from "@/lib/session";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import {
+  getGithubAppConfigureUrl,
+  isGithubAppConfigured,
+  listInstallationRepos,
+} from "@/lib/github-app";
+import type { GithubRepo } from "@/lib/github-repos";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -13,156 +17,66 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { NewAppForm } from "./new-app-form";
+import { ConnectGithubPrompt } from "./connect-github";
 
-interface Repo {
-  id: string;
-  name: string;
-  fullName: string;
-  owner: string;
-  defaultBranch: string;
-  private: boolean;
+async function loadRepos(installationId: string): Promise<GithubRepo[] | null> {
+  try {
+    return await listInstallationRepos(installationId);
+  } catch (error) {
+    console.error("Failed to list installation repos:", error);
+    return null;
+  }
 }
 
-export default function NewAppPage() {
-  const router = useRouter();
-  const [repos, setRepos] = useState<Repo[]>([]);
-  const [connected, setConnected] = useState<boolean | null>(null);
-  const [name, setName] = useState("");
-  const [selectedRepo, setSelectedRepo] = useState<Repo | null>(null);
-  const [branch, setBranch] = useState("main");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+export default async function NewAppPage() {
+  const session = await requireAuth();
+  const appConfigured = isGithubAppConfigured();
 
-  useEffect(() => {
-    fetch("/api/github/repos")
-      .then((res) => res.json())
-      .then((data) => {
-        setConnected(data.connected ?? false);
-        setRepos(data.repos ?? []);
-      })
-      .catch(() => setConnected(false));
-  }, []);
+  const [user] = await db
+    .select({ githubInstallationId: users.githubInstallationId })
+    .from(users)
+    .where(eq(users.id, session.user.id))
+    .limit(1);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selectedRepo) return;
-
-    setLoading(true);
-    setError("");
-
-    const response = await fetch("/api/apps", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        githubOwner: selectedRepo.owner,
-        githubRepo: selectedRepo.name,
-        githubBranch: branch,
-        githubId: selectedRepo.id,
-      }),
-    });
-
-    const data = await response.json();
-    setLoading(false);
-
-    if (!response.ok) {
-      setError(data.error ?? "Failed to create app");
-      return;
-    }
-
-    router.push(`/dashboard/apps/${data.app.id}`);
+  if (!user?.githubInstallationId) {
+    return <ConnectGithubPrompt appConfigured={appConfigured} />;
   }
 
-  if (connected === null) {
-    return <p className="text-zinc-600">Loading repositories...</p>;
+  const repos = await loadRepos(user.githubInstallationId);
+
+  if (!repos) {
+    return <ConnectGithubPrompt appConfigured={appConfigured} />;
   }
 
-  if (!connected) {
+  if (repos.length === 0) {
+    const configureUrl = getGithubAppConfigureUrl(user.githubInstallationId);
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Connect GitHub</CardTitle>
-          <CardDescription>
-            Sign in with GitHub or connect your account to list repositories.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button
-            onClick={async () => {
-              const { signIn } = await import("next-auth/react");
-              await signIn("github", { callbackUrl: "/dashboard/apps/new" });
-            }}
-          >
-            Connect GitHub
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="animate-fade-up">
+        <Card className="border-dashed border-border bg-surface/50">
+          <CardHeader>
+            <CardTitle className="font-display text-xl">
+              No repositories granted
+            </CardTitle>
+            <CardDescription>
+              The GitHub App is installed, but no repos are selected. Grant
+              access to the repos you want to deploy.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-3">
+            <Button asChild className="bg-ink hover:bg-ink/90">
+              <a href={configureUrl} target="_blank" rel="noopener noreferrer">
+                Configure repo access
+              </a>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/settings">Settings</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
-  return (
-    <div>
-      <h1 className="text-3xl font-bold">New App</h1>
-      <p className="mt-1 text-zinc-600">Deploy a GitHub repository</p>
-
-      <form onSubmit={handleSubmit} className="mt-8 max-w-xl space-y-6">
-        {error && (
-          <p className="rounded-md bg-red-50 p-3 text-sm text-red-600">{error}</p>
-        )}
-
-        <div className="space-y-2">
-          <Label htmlFor="name">App name</Label>
-          <Input
-            id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="my-portfolio"
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label>Repository</Label>
-          <select
-            className="flex h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm"
-            value={selectedRepo?.fullName ?? ""}
-            onChange={(e) => {
-              const repo = repos.find((r) => r.fullName === e.target.value);
-              setSelectedRepo(repo ?? null);
-              if (repo) setBranch(repo.defaultBranch);
-            }}
-            required
-          >
-            <option value="">Select a repository</option>
-            {repos.map((repo) => (
-              <option key={repo.id} value={repo.fullName}>
-                {repo.fullName} {repo.private ? "(private)" : ""}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="branch">Branch</Label>
-          <Input
-            id="branch"
-            value={branch}
-            onChange={(e) => setBranch(e.target.value)}
-            required
-          />
-        </div>
-
-        <div className="flex gap-4">
-          <Button type="submit" disabled={loading || !selectedRepo}>
-            {loading ? "Creating..." : "Deploy app"}
-          </Button>
-          <Link href="/dashboard">
-            <Button type="button" variant="outline">
-              Cancel
-            </Button>
-          </Link>
-        </div>
-      </form>
-    </div>
-  );
+  return <NewAppForm repos={repos} />;
 }

@@ -24,7 +24,11 @@ export async function GET() {
   }
 
   const [user] = await db
-    .select()
+    .select({
+      email: users.email,
+      totpEnabled: users.totpEnabled,
+      totpSecret: users.totpSecret,
+    })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);
@@ -38,7 +42,11 @@ export async function GET() {
   }
 
   const { secret, otpauthUrl } = createTotpEnrollment(user.email);
-  const qrDataUrl = await QRCode.toDataURL(otpauthUrl);
+  const qrDataUrl = await QRCode.toDataURL(otpauthUrl, {
+    margin: 1,
+    width: 220,
+    color: { dark: "#0b1220", light: "#ffffff" },
+  });
 
   const cookieStore = await cookies();
   cookieStore.set(PENDING_COOKIE, encryptPendingSecret(secret), {
@@ -49,7 +57,11 @@ export async function GET() {
     path: "/",
   });
 
-  return NextResponse.json({ qrDataUrl, otpauthUrl });
+  return NextResponse.json({
+    qrDataUrl,
+    otpauthUrl,
+    manualKey: secret,
+  });
 }
 
 const enrollSchema = z.object({

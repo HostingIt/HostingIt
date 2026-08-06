@@ -1,80 +1,200 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { PLANS } from "@/lib/plans";
+import { PlanCardsSection } from "@/components/pricing/plan-cards-section";
+import { getAppHostname } from "@/lib/dokploy";
 
 export default function HomePage() {
+  const exampleHost = getAppHostname("api");
   return (
     <div>
-      <section className="mx-auto max-w-6xl px-4 py-24 text-center">
-        <h1 className="text-5xl font-bold tracking-tight text-zinc-900">
-          Deploy Docker apps in minutes
-        </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-lg text-zinc-600">
-          HostingIt is a developer platform for Docker apps. Connect GitHub,
-          pick a repo, and get a live URL with SSL — no cloud provider
-          complexity.
-        </p>
-        <p className="mx-auto mt-4 max-w-xl text-sm text-zinc-500">
-          Best-effort hosting for hobby projects and small applications. Not
-          suitable for mission-critical production workloads.
-        </p>
-        <div className="mt-10 flex justify-center gap-4">
-          <Link href="/signup">
-            <Button size="lg">Start free</Button>
-          </Link>
-          <Link href="/docs">
-            <Button size="lg" variant="outline">
-              Read docs
-            </Button>
-          </Link>
+      {/* Hero — one composition: brand, headline, support, CTAs, visual plane */}
+      <section className="hero-plane relative min-h-[calc(100vh-4rem)] overflow-hidden">
+        <div className="hero-grid absolute inset-0" aria-hidden />
+
+        <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl flex-col justify-center px-4 pb-24 pt-16 lg:pb-32">
+          <div className="max-w-2xl">
+            <p className="animate-fade-up font-display text-5xl font-extrabold tracking-tight text-ink sm:text-6xl lg:text-7xl">
+              Hosting<span className="text-accent">It</span>
+            </p>
+            <h1 className="animate-fade-up-delay mt-6 font-display text-2xl font-semibold leading-snug tracking-tight text-ink sm:text-3xl">
+              Deploy Docker apps from GitHub in minutes.
+            </h1>
+            <p className="animate-fade-up-delay-2 mt-4 max-w-lg text-base leading-relaxed text-muted sm:text-lg">
+              Connect a repo, get a live URL with SSL — flat pricing, no cloud
+              maze.
+            </p>
+            <div className="animate-fade-up-delay-2 mt-8 flex flex-wrap gap-3">
+              <Link href="/signup">
+                <Button
+                  size="lg"
+                  className="bg-ink px-8 text-white hover:bg-ink/90"
+                >
+                  Start free
+                </Button>
+              </Link>
+              <Link href="/pricing">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-ink/20 bg-white/60 backdrop-blur-sm hover:bg-white"
+                >
+                  See pricing
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          {/* Dominant visual — terminal deploy scene as atmospheric plane */}
+          <div
+            className="animate-fade-in animate-drift pointer-events-none absolute bottom-8 right-4 hidden w-[min(440px,42vw)] lg:block"
+            aria-hidden
+          >
+            <div className="overflow-hidden rounded-lg border border-ink/10 bg-ink/95 shadow-none">
+              <div className="flex items-center gap-1.5 border-b border-white/10 px-3 py-2">
+                <span className="h-2 w-2 rounded-sm bg-white/25" />
+                <span className="h-2 w-2 rounded-sm bg-white/25" />
+                <span className="h-2 w-2 rounded-sm bg-white/25" />
+                <span className="ml-2 font-mono text-[10px] text-white/40">
+                  deploy · my-api
+                </span>
+              </div>
+              <pre className="space-y-1 p-4 font-mono text-[11px] leading-relaxed text-teal-200/90">
+                <code className="block text-white/45">$ hostingit deploy</code>
+                <code className="block">→ cloning github.com/you/api</code>
+                <code className="block">→ building Dockerfile</code>
+                <code className="block">→ provisioning SSL</code>
+                <code className="block text-accent">✓ live at {exampleHost}</code>
+              </pre>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="border-t border-zinc-200 bg-white py-20">
+      {/* How it works — one job */}
+      <section className="border-t border-border bg-surface py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-4">
-          <h2 className="text-center text-3xl font-bold">Built for small developers</h2>
-          <div className="mt-12 grid gap-8 md:grid-cols-3">
+          <h2 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+            From repo to URL
+          </h2>
+          <p className="mt-3 max-w-xl text-muted">
+            Three steps. No YAML maze, no cloud console hopping.
+          </p>
+
+          <ol className="mt-14 grid gap-10 sm:grid-cols-3 sm:gap-8">
             {[
               {
-                title: "GitHub deploys",
-                desc: "Connect your repo and deploy on every push.",
+                step: "01",
+                title: "Connect GitHub",
+                desc: "Sign in and link the repos you want to ship.",
               },
               {
-                title: "Free subdomain",
-                desc: "Get myapp.yourdomain.com with automatic SSL.",
+                step: "02",
+                title: "Pick & deploy",
+                desc: "Choose a branch. We build your Docker image.",
               },
               {
-                title: "Docker native",
-                desc: "Node.js, Python, static sites — if it runs in Docker, it runs here.",
+                step: "03",
+                title: "Go live",
+                desc: "Get a subdomain with SSL — or attach your domain on Pro.",
               },
             ].map((item) => (
-              <div key={item.title} className="rounded-lg border border-zinc-200 p-6">
-                <h3 className="text-lg font-semibold">{item.title}</h3>
-                <p className="mt-2 text-zinc-600">{item.desc}</p>
+              <li key={item.step} className="relative">
+                <span className="font-mono text-sm font-medium text-accent">
+                  {item.step}
+                </span>
+                <h3 className="mt-3 font-display text-xl font-semibold text-ink">
+                  {item.title}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted">
+                  {item.desc}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* Who it's for — one job */}
+      <section className="border-t border-border py-20 sm:py-24">
+        <div className="mx-auto max-w-6xl px-4">
+          <h2 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+            Built for indie builders
+          </h2>
+          <p className="mt-3 max-w-xl text-muted">
+            Hobby apps and side projects — not mission-critical production.
+          </p>
+
+          <div className="mt-14 grid gap-y-10 sm:grid-cols-3 sm:gap-x-10">
+            {[
+              {
+                title: "GitHub-native",
+                desc: "Deploy from the repos you already push to.",
+              },
+              {
+                title: "Docker-first",
+                desc: "If it runs in a container, it runs here.",
+              },
+              {
+                title: "Predictable bill",
+                desc: "Flat monthly plans — no RAM meters or egress surprises.",
+              },
+            ].map((item) => (
+              <div key={item.title}>
+                <h3 className="font-display text-lg font-semibold text-ink">
+                  {item.title}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted">
+                  {item.desc}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="py-20">
+      {/* Pricing tease */}
+      <section className="border-t border-border bg-surface py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-4">
-          <h2 className="text-center text-3xl font-bold">Simple pricing</h2>
-          <div className="mt-12 grid gap-6 md:grid-cols-4">
-            {Object.entries(PLANS).map(([key, plan]) => (
-              <div
-                key={key}
-                className="rounded-lg border border-zinc-200 bg-white p-6"
-              >
-                <h3 className="text-lg font-semibold">{plan.name}</h3>
-                <p className="mt-2 text-3xl font-bold">{plan.priceLabel}</p>
-                <p className="mt-4 text-sm text-zinc-600">{plan.description}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-8 text-center">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+                Flat pricing
+              </h2>
+              <p className="mt-3 max-w-md text-muted">
+                Free to try one app. Pro when you need more apps and custom
+                domains.
+              </p>
+            </div>
             <Link href="/pricing">
-              <Button variant="outline">View all plans</Button>
+              <Button
+                variant="outline"
+                className="border-ink/15 hover:border-ink/30 hover:bg-background"
+              >
+                Compare with Railway →
+              </Button>
+            </Link>
+          </div>
+          <div className="mt-12">
+            <PlanCardsSection showActions={false} compact />
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="border-t border-border py-20 sm:py-24">
+        <div className="mx-auto max-w-6xl px-4 text-center">
+          <h2 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+            Ship something this weekend
+          </h2>
+          <p className="mx-auto mt-3 max-w-md text-muted">
+            Start on Free — one deployable app, subdomain, SSL. Upgrade when
+            you need more.
+          </p>
+          <div className="mt-8">
+            <Link href="/signup">
+              <Button size="lg" className="bg-accent px-8 hover:bg-accent-deep">
+                Create your account
+              </Button>
             </Link>
           </div>
         </div>

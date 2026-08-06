@@ -1,28 +1,22 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/db";
-import { paymentRequests, users } from "@/db/schema";
-import { PLANS, type Plan } from "@/lib/plans";
+import { paymentRequests } from "@/db/schema";
+import { PLANS } from "@/lib/plans";
 
 const paymentSchema = z.object({
-  plan: z.enum(["starter", "pro", "business"]),
+  plan: z.enum(["pro"]),
   method: z.enum(["upi", "paypal", "bank"]),
   referenceNote: z.string().min(3),
 });
 
 export async function GET() {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
 
   const requests = await db
     .select()
@@ -30,20 +24,18 @@ export async function GET() {
     .where(eq(paymentRequests.userId, session.user.id));
 
   return NextResponse.json({
-    plan: user?.plan ?? "free",
-    accountStatus: user?.accountStatus ?? "active",
+    plan: session.user.plan ?? "free",
     paymentInstructions: {
       upi: process.env.PAYMENT_UPI_ID ?? "Not configured",
       paypal: process.env.PAYMENT_PAYPAL ?? "Not configured",
       bank: process.env.PAYMENT_BANK_DETAILS ?? "Not configured",
     },
     requests,
-    plans: PLANS,
   });
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -56,15 +48,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
 
-    const { plan, method, referenceNote } = parsed.data;
-    const planConfig = PLANS[plan as Plan];
-    const amount = planConfig.price ?? 0;
+    const { method, referenceNote } = parsed.data;
+    const amount = PLANS.pro.price ?? 0;
 
     const [request_] = await db
       .insert(paymentRequests)
       .values({
         userId: session.user.id,
-        plan,
+        plan: "pro",
         amount: amount.toFixed(2),
         method,
         referenceNote,

@@ -24,6 +24,14 @@ export interface Project {
   name: string;
   description?: string | null;
   createdAt?: string;
+  environments?: Array<{ environmentId: string; name?: string; isDefault?: boolean }>;
+}
+
+export interface CreateProjectResult {
+  projectId: string;
+  environmentId: string;
+  name: string;
+  description?: string | null;
 }
 
 export interface CreateApplicationInput {
@@ -34,11 +42,69 @@ export interface CreateApplicationInput {
   serverId?: string | null;
 }
 
+export type BuildType =
+  | "nixpacks"
+  | "dockerfile"
+  | "static"
+  | "heroku_buildpacks"
+  | "paketo_buildpacks"
+  | "railpack";
+
+export type ApplicationStatus = "running" | "done" | "idle" | "error" | string;
+
 export interface Application {
   applicationId: string;
   name: string;
   appName?: string;
   environmentId?: string;
+  buildType?: BuildType;
+  buildPath?: string | null;
+  branch?: string | null;
+  owner?: string | null;
+  repository?: string | null;
+  env?: string | null;
+  buildArgs?: string | null;
+  buildSecrets?: string | null;
+  autoDeploy?: boolean | null;
+  dockerfile?: string | null;
+  dockerContextPath?: string | null;
+  dockerBuildStage?: string | null;
+  publishDirectory?: string | null;
+  isStaticSpa?: boolean | null;
+  applicationStatus?: ApplicationStatus;
+  customGitUrl?: string | null;
+  customGitBranch?: string | null;
+  customGitBuildPath?: string | null;
+}
+
+export interface SaveEnvironmentInput {
+  applicationId: string;
+  env: string | null;
+  buildArgs?: string | null;
+  buildSecrets?: string | null;
+  createEnvFile?: boolean;
+}
+
+export interface SaveBuildTypeInput {
+  applicationId: string;
+  buildType: BuildType;
+  dockerfile?: string | null;
+  dockerContextPath?: string | null;
+  dockerBuildStage?: string | null;
+  herokuVersion?: string | null;
+  railpackVersion?: string | null;
+  publishDirectory?: string | null;
+  isStaticSpa?: boolean | null;
+}
+
+export interface UpdateApplicationInput {
+  applicationId: string;
+  autoDeploy?: boolean;
+  name?: string;
+  memoryLimit?: string | null;
+  memoryReservation?: string | null;
+  cpuLimit?: string | null;
+  cpuReservation?: string | null;
 }
 
 export interface SaveGithubProviderInput {
@@ -47,8 +113,14 @@ export interface SaveGithubProviderInput {
   owner: string;
   branch: string;
   buildPath?: string;
+  /** Dokploy GitHub *provider* id (from github.githubProviders), not a GitHub repo id */
   githubId?: string | null;
   triggerType?: "push" | "tag";
+}
+
+export interface GithubProvider {
+  githubId: string;
+  name?: string;
 }
 
 export interface DeployInput {
@@ -70,9 +142,32 @@ export interface Domain {
   applicationId?: string;
 }
 
-export interface DeploymentLog {
-  message: string;
-  timestamp?: string;
+export interface Deployment {
+  deploymentId: string;
+  title?: string | null;
+  description?: string | null;
+  status: "running" | "done" | "error" | "cancelled" | string;
+  logPath?: string | null;
+  errorMessage?: string | null;
+  applicationId?: string;
+  createdAt?: string;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+}
+
+export type LogSince = "all" | `${number}${"s" | "m" | "h" | "d"}`;
+
+export interface AppMonitoringPoint {
+  value: number | string;
+  time: string;
+}
+
+export interface AppMonitoring {
+  cpu?: AppMonitoringPoint[];
+  memory?: AppMonitoringPoint[];
+  disk?: AppMonitoringPoint[];
+  network?: AppMonitoringPoint[];
+  block?: AppMonitoringPoint[];
 }
 
 export class DokployClient {
@@ -141,18 +236,55 @@ export class DokployClient {
     return data.result ?? [];
   }
 
-  async createProject(input: CreateProjectInput): Promise<Project> {
-    const data = await this.request<Project | { result?: { data?: Project } }>(
-      "/api/project.create",
-      {
-        method: "POST",
-        body: JSON.stringify(input),
-      }
-    );
-    if ("projectId" in (data as Project)) return data as Project;
-    const wrapped = data as { result?: { data?: Project } };
-    if (wrapped.result?.data) return wrapped.result.data;
-    return data as Project;
+  async createProject(input: CreateProjectInput): Promise<CreateProjectResult> {
+    const data = await this.request<
+      | CreateProjectResult
+      | Project
+      | {
+          project?: Project;
+          environment?: { environmentId: string };
+          result?: { data?: Project & { environmentId?: string } };
+        }
+    >("/api/project.create", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+
+    const nested = data as {
+      project?: Project;
+      environment?: { environmentId: string };
+    };
+    if (nested.project?.projectId && nested.environment?.environmentId) {
+      return {
+        projectId: nested.project.projectId,
+        environmentId: nested.environment.environmentId,
+        name: nested.project.name,
+        description: nested.project.description,
+      };
+    }
+
+    const flat = data as Project & { environmentId?: string };
+    if (flat.projectId) {
+      return {
+        projectId: flat.projectId,
+        environmentId: flat.environmentId ?? "",
+        name: flat.name,
+        description: flat.description,
+      };
+    }
+
+    const wrapped = data as { result?: { data?: Project & { environmentId?: string } } };
+    if (wrapped.result?.data?.projectId) {
+      const project = wrapped.result.data;
+      return {
+        projectId: project.projectId,
+        environmentId: project.environmentId ?? "",
+        name: project.name,
+        description: project.description,
+      };
+    }
+
+    throw new DokployError("Unexpected project.create response shape", 500);
   }
 
   async getProject(projectId: string): Promise<Project> {
@@ -173,19 +305,99 @@ export class DokployClient {
     return data as Application;
   }
 
-  async getApplication(applicationId: string): Promise<Application & { status?: string }> {
+  async getApplication(applicationId: string): Promise<Application> {
     return this.request(`/api/application.one?applicationId=${encodeURIComponent(applicationId)}`, {
       method: "GET",
     });
+  }
+
+  async saveEnvironment(input: SaveEnvironmentInput): Promise<boolean> {
+    return this.request<boolean>("/api/application.saveEnvironment", {
+      method: "POST",
+      body: JSON.stringify({
+        applicationId: input.applicationId,
+        env: input.env,
+        buildArgs: input.buildArgs ?? null,
+        buildSecrets: input.buildSecrets ?? null,
+        createEnvFile: input.createEnvFile ?? true,
+      }),
+    });
+  }
+
+  async saveBuildType(input: SaveBuildTypeInput): Promise<boolean> {
+    return this.request<boolean>("/api/application.saveBuildType", {
+      method: "POST",
+      body: JSON.stringify({
+        applicationId: input.applicationId,
+        buildType: input.buildType,
+        dockerfile: input.dockerfile ?? null,
+        dockerContextPath: input.dockerContextPath ?? null,
+        dockerBuildStage: input.dockerBuildStage ?? null,
+        herokuVersion: input.herokuVersion ?? null,
+        railpackVersion: input.railpackVersion ?? null,
+        publishDirectory: input.publishDirectory ?? null,
+        isStaticSpa: input.isStaticSpa ?? null,
+      }),
+    });
+  }
+
+  async updateApplication(input: UpdateApplicationInput): Promise<boolean> {
+    return this.request<boolean>("/api/application.update", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async listGithubProviders(): Promise<GithubProvider[]> {
+    const data = await this.request<
+      Array<{
+        githubId: string;
+        gitProvider?: { name?: string };
+      }>
+    >("/api/github.githubProviders", { method: "GET" });
+
+    if (!Array.isArray(data)) return [];
+    return data.map((provider) => ({
+      githubId: provider.githubId,
+      name: provider.gitProvider?.name,
+    }));
   }
 
   async saveGithubProvider(input: SaveGithubProviderInput): Promise<void> {
     await this.request("/api/application.saveGithubProvider", {
       method: "POST",
       body: JSON.stringify({
-        ...input,
+        applicationId: input.applicationId,
+        repository: input.repository,
+        owner: input.owner,
+        branch: input.branch,
+        githubId: input.githubId ?? null,
         buildPath: input.buildPath ?? "/",
         triggerType: input.triggerType ?? "push",
+      }),
+    });
+  }
+
+  async saveGitProvider(input: {
+    applicationId: string;
+    customGitUrl: string;
+    customGitBranch: string;
+    customGitBuildPath?: string | null;
+    customGitSSHKeyId?: string | null;
+    enableSubmodules?: boolean;
+    watchPaths?: string[] | null;
+  }): Promise<boolean> {
+    const buildPath = input.customGitBuildPath ?? "/";
+    return this.request<boolean>("/api/application.saveGitProvider", {
+      method: "POST",
+      body: JSON.stringify({
+        applicationId: input.applicationId,
+        customGitUrl: input.customGitUrl,
+        customGitBranch: input.customGitBranch,
+        customGitBuildPath: buildPath,
+        customGitSSHKeyId: input.customGitSSHKeyId ?? null,
+        enableSubmodules: input.enableSubmodules ?? false,
+        watchPaths: input.watchPaths ?? [buildPath],
       }),
     });
   }
@@ -242,29 +454,84 @@ export class DokployClient {
     });
   }
 
-  async getDeploymentLogs(applicationId: string): Promise<DeploymentLog[]> {
-    try {
-      const data = await this.request<{ logs?: DeploymentLog[] } | DeploymentLog[]>(
-        `/api/deployment.all?applicationId=${encodeURIComponent(applicationId)}`,
-        { method: "GET" }
-      );
-      if (Array.isArray(data)) return data;
-      return data.logs ?? [];
-    } catch {
-      return [];
-    }
+  async listDeployments(applicationId: string): Promise<Deployment[]> {
+    const data = await this.request<Deployment[] | { result?: Deployment[] }>(
+      `/api/deployment.all?applicationId=${encodeURIComponent(applicationId)}`,
+      { method: "GET" }
+    );
+    if (Array.isArray(data)) return data;
+    return data.result ?? [];
   }
 
-  async getApplicationLogs(applicationId: string): Promise<string> {
+  async getDeploymentLogs(deploymentId: string, tail?: number): Promise<string> {
     try {
+      const params = new URLSearchParams({ deploymentId });
+      if (tail) params.set("tail", String(tail));
       const data = await this.request<{ logs?: string } | string>(
-        `/api/application.readLogs?applicationId=${encodeURIComponent(applicationId)}`,
+        `/api/deployment.readLogs?${params.toString()}`,
         { method: "GET" }
       );
       if (typeof data === "string") return data;
       return data.logs ?? "";
     } catch {
       return "";
+    }
+  }
+
+  async getApplicationLogs(
+    applicationId: string,
+    options?: { tail?: number; since?: LogSince; search?: string }
+  ): Promise<string> {
+    try {
+      const params = new URLSearchParams({ applicationId });
+      if (options?.tail) params.set("tail", String(options.tail));
+      if (options?.since && options.since !== "all") params.set("since", options.since);
+      if (options?.search) params.set("search", options.search);
+      const data = await this.request<{ logs?: string } | string>(
+        `/api/application.readLogs?${params.toString()}`,
+        { method: "GET" }
+      );
+      if (typeof data === "string") return data;
+      return data.logs ?? "";
+    } catch {
+      return "";
+    }
+  }
+
+  async startApplication(applicationId: string): Promise<boolean> {
+    return this.request<boolean>("/api/application.start", {
+      method: "POST",
+      body: JSON.stringify({ applicationId }),
+    });
+  }
+
+  async stopApplication(applicationId: string): Promise<boolean> {
+    return this.request<boolean>("/api/application.stop", {
+      method: "POST",
+      body: JSON.stringify({ applicationId }),
+    });
+  }
+
+  async cancelDeployment(applicationId: string): Promise<boolean> {
+    return this.request<boolean>("/api/application.cancelDeployment", {
+      method: "POST",
+      body: JSON.stringify({ applicationId }),
+    });
+  }
+
+  async getAppMonitoring(appName: string): Promise<AppMonitoring | null> {
+    try {
+      const data = await this.request<AppMonitoring | { result?: AppMonitoring }>(
+        `/api/application.readAppMonitoring?appName=${encodeURIComponent(appName)}`,
+        { method: "GET" }
+      );
+      const monitoring =
+        data && typeof data === "object" && "result" in data
+          ? (data as { result?: AppMonitoring }).result
+          : (data as AppMonitoring);
+      return monitoring ?? null;
+    } catch {
+      return null;
     }
   }
 }

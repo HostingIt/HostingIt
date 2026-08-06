@@ -1,17 +1,30 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Syne, DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/header";
-import { Providers } from "@/components/providers";
+import { Footer } from "@/components/layout/footer";
+import { MarketingChrome } from "@/components/layout/marketing-chrome";
+import { ThemeProvider } from "@/components/theme-provider";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const syne = Syne({
+  variable: "--font-syne",
   subsets: ["latin"],
+  weight: ["700", "800"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
+});
+
+const jetbrains = JetBrains_Mono({
+  variable: "--font-jetbrains",
+  subsets: ["latin"],
+  weight: ["400"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -26,14 +39,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-zinc-50 antialiased`}
+        className={`${syne.variable} ${dmSans.variable} ${jetbrains.variable} min-h-screen bg-background text-foreground antialiased`}
       >
-        <Providers>
-          <Header />
-          <main>{children}</main>
-        </Providers>
+        <ThemeProvider>
+          <MarketingChrome header={<Header />} footer={<Footer />}>
+            {children}
+          </MarketingChrome>
+        </ThemeProvider>
       </body>
     </html>
   );

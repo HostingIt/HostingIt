@@ -3,6 +3,7 @@ import postgres from "postgres";
 import * as schema from "./schema";
 
 let dbInstance: ReturnType<typeof drizzle<typeof schema>> | null = null;
+let sqlClient: ReturnType<typeof postgres> | null = null;
 
 export function getDb() {
   if (!dbInstance) {
@@ -10,8 +11,14 @@ export function getDb() {
     if (!connectionString) {
       throw new Error("DATABASE_URL is not set");
     }
-    const client = postgres(connectionString, { prepare: false });
-    dbInstance = drizzle(client, { schema });
+    sqlClient = postgres(connectionString, {
+      prepare: false,
+      max: Number(process.env.DB_POOL_MAX ?? 10),
+      idle_timeout: 20,
+      max_lifetime: 60 * 30,
+      connect_timeout: 10,
+    });
+    dbInstance = drizzle(sqlClient, { schema });
   }
   return dbInstance;
 }

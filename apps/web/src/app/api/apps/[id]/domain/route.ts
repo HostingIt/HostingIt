@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/db";
-import { apps, users } from "@/db/schema";
+import { apps } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
 import { canUseCustomDomain } from "@/lib/plans";
-import type { Plan } from "@/lib/plans";
 
 const domainSchema = z.object({
   domain: z.string().min(3),
@@ -16,7 +15,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -29,15 +28,10 @@ export async function POST(
     return NextResponse.json({ error: "Invalid domain" }, { status: 400 });
   }
 
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
-
-  if (!user || !canUseCustomDomain(user.plan as Plan)) {
+  const plan = session.user.plan ?? "free";
+  if (!canUseCustomDomain(plan)) {
     return NextResponse.json(
-      { error: "Custom domains require Starter plan or higher" },
+      { error: "Custom domains require Pro plan or higher" },
       { status: 403 }
     );
   }

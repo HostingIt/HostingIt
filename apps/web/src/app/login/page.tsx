@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { OAuthButtons } from "@/components/auth/oauth-buttons";
+import { Alert } from "@/components/ui/alert";
 
 export default async function LoginPage({
   searchParams,
@@ -22,22 +23,21 @@ export default async function LoginPage({
         : null;
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md">
+    <div className="hero-plane relative flex min-h-[calc(100vh-4rem)] items-center justify-center overflow-hidden px-4 py-12">
+      <div className="hero-grid absolute inset-0 opacity-50" aria-hidden />
+      <Card className="relative w-full max-w-md border-border bg-surface/95 shadow-none">
         <CardHeader>
-          <CardTitle>Welcome back</CardTitle>
+          <CardTitle className="font-display text-2xl">Welcome back</CardTitle>
           <CardDescription>Sign in with GitHub or Google</CardDescription>
         </CardHeader>
         <CardContent>
           {errorMessage && (
-            <p className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-600">
-              {errorMessage}
-            </p>
+            <Alert className="mb-4">{errorMessage}</Alert>
           )}
           <OAuthButtons callbackUrl="/dashboard" />
-          <p className="mt-6 text-center text-sm text-zinc-600">
+          <p className="mt-6 text-center text-sm text-muted">
             New here?{" "}
-            <Link href="/signup" className="font-medium hover:underline">
+            <Link href="/signup" className="font-medium text-ink hover:underline">
               Create an account
             </Link>
           </p>

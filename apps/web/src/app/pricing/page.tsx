@@ -1,51 +1,50 @@
+import { PlanCardsSection } from "@/components/pricing/plan-cards-section";
+import { RailwayComparison } from "@/components/pricing/railway-comparison";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { PLANS } from "@/lib/plans";
+import { getSession } from "@/lib/session";
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const session = await getSession();
+  const isLoggedIn = !!session?.user?.id;
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-16">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold">Pricing</h1>
-        <p className="mt-4 text-zinc-600">
-          Start free. Upgrade when you need more apps or custom domains.
+    <div>
+      <section className="hero-plane relative overflow-hidden border-b border-border">
+        <div className="hero-grid absolute inset-0 opacity-60" aria-hidden />
+        <div className="relative mx-auto max-w-6xl px-4 py-16 sm:py-20">
+          <p className="font-mono text-xs font-medium uppercase tracking-widest text-accent">
+            Pricing
+          </p>
+          <h1 className="mt-3 font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
+            Simple, predictable pricing
+          </h1>
+          <p className="mt-4 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
+            Flat monthly plans — no RAM meters, no CPU surprises. Start free,
+            upgrade to Pro when you need more apps and custom domains.
+          </p>
+          {isLoggedIn && (
+            <p className="mt-4 text-sm text-muted">
+              Logged in as <strong className="text-ink">{session.user.email}</strong>
+              {" · "}
+              <Link href="/dashboard/billing" className="text-accent hover:underline">
+                Manage billing
+              </Link>
+            </p>
+          )}
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-6xl px-4 py-14 sm:py-16">
+        <PlanCardsSection />
+
+        <p className="mt-8 text-center text-sm text-muted">
+          Pro is activated manually after payment verification (UPI, PayPal, or
+          bank transfer). Enterprise is on the roadmap for dedicated
+          infrastructure.
         </p>
-      </div>
 
-      <div className="mt-12 grid gap-6 md:grid-cols-4">
-        {Object.entries(PLANS).map(([key, plan]) => (
-          <div
-            key={key}
-            className="rounded-lg border border-zinc-200 bg-white p-6"
-          >
-            <h2 className="text-xl font-semibold">{plan.name}</h2>
-            <p className="mt-2 text-3xl font-bold">{plan.priceLabel}</p>
-            <p className="mt-4 text-sm text-zinc-600">{plan.description}</p>
-            <ul className="mt-4 space-y-2 text-sm text-zinc-600">
-              <li>Up to {plan.maxApps} apps</li>
-              <li>{plan.customDomain ? "Custom domains" : "Subdomain only"}</li>
-            </ul>
-            {key !== "business" ? (
-              <Link href="/signup" className="mt-6 block">
-                <Button className="w-full" variant={key === "free" ? "outline" : "default"}>
-                  {key === "free" ? "Start free" : "Get started"}
-                </Button>
-              </Link>
-            ) : (
-              <Link href="mailto:support@yourdomain.com" className="mt-6 block">
-                <Button className="w-full" variant="outline">
-                  Contact us
-                </Button>
-              </Link>
-            )}
-          </div>
-        ))}
+        <RailwayComparison />
       </div>
-
-      <p className="mt-12 text-center text-sm text-zinc-500">
-        Paid plans are activated manually after payment verification (UPI, PayPal,
-        or bank transfer).
-      </p>
     </div>
   );
 }

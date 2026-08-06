@@ -4,7 +4,7 @@ export default function PrivacyPage() {
       <h1 className="text-4xl font-bold">Privacy Policy</h1>
       <p className="mt-4 text-sm text-zinc-500">Last updated: August 2026</p>
 
-      <div className="prose prose-zinc mt-12 max-w-none">
+      <div className="prose prose-zinc dark:prose-invert mt-12 max-w-none">
         <h2>Information we collect</h2>
         <ul>
           <li>Account information: email, name</li>

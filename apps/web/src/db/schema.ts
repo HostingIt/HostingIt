@@ -10,7 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
-export const planEnum = pgEnum("plan", ["free", "starter", "pro", "business"]);
+export const planEnum = pgEnum("plan", ["free", "pro", "enterprise"]);
 export const accountStatusEnum = pgEnum("account_status", [
   "pending",
   "active",
@@ -54,6 +54,8 @@ export const users = pgTable("users", {
   dokployEnvironmentId: text("dokploy_environment_id"),
   githubId: text("github_id"),
   githubAccessToken: text("github_access_token"),
+  /** HostingIt GitHub App installation id (repo access for deploys) */
+  githubInstallationId: text("github_installation_id"),
   googleId: text("google_id"),
   totpSecret: text("totp_secret"),
   totpEnabled: boolean("totp_enabled").default(false).notNull(),

@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { cache } from "react";
 import { db } from "@/db";
 import { users, type User } from "@/db/schema";
 
@@ -198,10 +199,10 @@ export async function linkProviderToUser(
   return linked;
 }
 
-export async function getUserById(id: string): Promise<User | null> {
+export const getUserById = cache(async (id: string): Promise<User | null> => {
   const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
   return user ?? null;
-}
+});
 
 export async function getUserByProvider(
   provider: OAuthProvider,

@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import { eq, and } from "drizzle-orm";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { apps } from "@/db/schema";
-import { getDokployClient, getAppUrl } from "@/lib/dokploy";
+import { getDokployClient, getAppPublicUrl } from "@/lib/dokploy";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -26,18 +26,9 @@ export async function GET(
     return NextResponse.json({ error: "App not found" }, { status: 404 });
   }
 
-  let logs = "";
-  try {
-    const dokploy = getDokployClient();
-    logs = await dokploy.getApplicationLogs(app.dokployAppId);
-  } catch {
-    logs = "Unable to fetch logs. Try again later or contact support.";
-  }
-
   return NextResponse.json({
     app,
-    url: getAppUrl(app.slug),
-    logs,
+    url: getAppPublicUrl(app),
   });
 }
 
@@ -45,7 +36,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

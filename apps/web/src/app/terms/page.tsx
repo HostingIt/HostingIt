@@ -4,7 +4,7 @@ export default function TermsPage() {
       <h1 className="text-4xl font-bold">Terms of Service</h1>
       <p className="mt-4 text-sm text-zinc-500">Last updated: August 2026</p>
 
-      <div className="prose prose-zinc mt-12 max-w-none">
+      <div className="prose prose-zinc dark:prose-invert mt-12 max-w-none">
         <h2>Service description</h2>
         <p>
           HostingIt provides managed hosting for Docker applications. The service

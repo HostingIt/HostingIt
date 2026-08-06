@@ -23,7 +23,10 @@ export async function POST(request: Request) {
   }
 
   const [user] = await db
-    .select()
+    .select({
+      totpSecret: users.totpSecret,
+      totpEnabled: users.totpEnabled,
+    })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);

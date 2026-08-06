@@ -1,64 +1,64 @@
 import Link from "next/link";
+import { DocsArticle } from "@/components/docs/docs-article";
+import { getAppHostname } from "@/lib/dokploy";
 
 export default function DocsPage() {
+  const exampleHost = getAppHostname("my-api");
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-16">
-      <h1 className="text-4xl font-bold">Documentation</h1>
-      <p className="mt-4 text-zinc-600">
-        Get your first app deployed in under 5 minutes.
+    <DocsArticle
+      title="Documentation"
+      description="Deploy from GitHub, get a live URL with SSL, and manage your apps from one dashboard."
+    >
+      <h2>What HostingIt is</h2>
+      <p>
+        HostingIt is managed Docker hosting for indie developers. Connect a
+        GitHub repository, pick what to deploy, and we give you a subdomain with
+        SSL — flat pricing, no cloud console maze.
+      </p>
+      <p>
+        It is best-effort hosting for hobby projects and small apps. It is not a
+        replacement for mission-critical production infrastructure.
       </p>
 
-      <div className="prose prose-zinc mt-12 max-w-none">
-        <h2>Quick start</h2>
-        <ol>
-          <li>Create an account with GitHub or Google.</li>
-          <li>Complete mandatory 2FA setup on first login.</li>
-          <li>Connect GitHub from Settings if you signed in with Google.</li>
-          <li>Click <strong>New App</strong>, select a repository and branch.</li>
-          <li>HostingIt provisions your app and assigns a subdomain with SSL.</li>
-          <li>Your app will be available at <code>your-app.yourdomain.com</code>.</li>
-        </ol>
+      <h2>Start here</h2>
+      <ul>
+        <li>
+          <Link href="/docs/getting-started">Getting started</Link> — first
+          deploy in a few minutes
+        </li>
+        <li>
+          <Link href="/docs/apps">Apps &amp; limits</Link> — what an app is, Free
+          vs Pro, monorepos
+        </li>
+        <li>
+          <Link href="/docs/deploys">Builds &amp; deploys</Link> — Dockerfile,
+          Nixpacks, root directory, stages
+        </li>
+        <li>
+          <Link href="/docs/variables">Variables &amp; secrets</Link> — runtime
+          env and build secrets
+        </li>
+        <li>
+          <Link href="/docs/domains">Domains</Link> — free subdomain and custom
+          domains on Pro
+        </li>
+      </ul>
 
-        <h2>Supported apps</h2>
-        <ul>
-          <li>Node.js (Express, Next.js, etc.)</li>
-          <li>Python (Flask, FastAPI)</li>
-          <li>Static sites</li>
-          <li>Any app with a Dockerfile or standard build configuration</li>
-        </ul>
+      <h2>Example URL</h2>
+      <p>
+        Free apps get a HostingIt subdomain, for example{" "}
+        <code>{exampleHost}</code>.
+      </p>
 
-        <h2>Custom domains</h2>
+      <div className="callout">
         <p>
-          Available on Starter plan and above. Add your domain in the app detail
-          page, then point a CNAME record to your app subdomain.
-        </p>
-
-        <h2>Environment variables</h2>
-        <p>
-          In-dashboard environment variable management is coming soon. Contact
-          support if you need env vars set for your app in the meantime.
-        </p>
-
-        <h2>Limitations</h2>
-        <p>
-          HostingIt provides best-effort hosting for hobby projects and small
-          applications. We do not guarantee 99.99% uptime. Do not use this
-          platform for mission-critical production workloads.
-        </p>
-
-        <h2>Roadmap</h2>
-        <p>
-          We&apos;re scaling <strong>HostingIt Infra</strong> (team-managed
-          infrastructure for paid plans), multi-region hosts, and a{" "}
-          <strong>self-hosted</strong> option so you can deploy to your own
-          server from the same panel.
-        </p>
-        <p>
-          <Link href="/docs/roadmap" className="font-medium text-zinc-900 underline">
-            Read the full roadmap →
-          </Link>
+          <strong>Tip.</strong> Each HostingIt app runs one deployable unit (one
+          root directory / one container). Frontend and backend folders in the
+          same repo are two apps — see{" "}
+          <Link href="/docs/apps">Apps &amp; limits</Link>.
         </p>
       </div>
-    </div>
+    </DocsArticle>
   );
 }

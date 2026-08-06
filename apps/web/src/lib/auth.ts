@@ -34,21 +34,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const session = await auth();
         const isLinking = Boolean(session?.user?.id && session.user.mfaVerified);
 
-        if (account.provider === "github") {
-          const parsed = parseGitHubProfile(profile as Record<string, unknown>);
-          if (isLinking) {
+        // Linking runs here (needs live session). Fresh sign-in DB work is in jwt only.
+        if (isLinking) {
+          if (account.provider === "github") {
+            const parsed = parseGitHubProfile(profile as Record<string, unknown>);
             await linkProviderToUser(
               session!.user!.id,
               "github",
               parsed,
               account.access_token
             );
-          } else {
-            await handleOAuthUser("github", parsed, account.access_token);
-          }
-        } else if (account.provider === "google") {
-          const parsed = parseGoogleProfile(profile as Record<string, unknown>);
-          if (isLinking) {
+          } else if (account.provider === "google") {
+            const parsed = parseGoogleProfile(profile as Record<string, unknown>);
             await linkProviderToUser(
               session!.user!.id,
               "google",
@@ -56,10 +53,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               account.access_token
             );
           } else {
-            await handleOAuthUser("google", parsed, account.access_token);
+            return false;
           }
-        } else {
-          return false;
         }
         return true;
       } catch (error) {
@@ -78,38 +73,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         let dbUser = null;
         const isLinking = Boolean(token.id && token.mfaVerified);
 
-        if (account.provider === "github") {
+        if (isLinking && token.id) {
+          // signIn callback already linked — refresh user once
+          dbUser = await getUserById(token.id as string);
+        } else if (account.provider === "github") {
           const parsed = parseGitHubProfile(profile as Record<string, unknown>);
-          if (isLinking && token.id) {
-            dbUser = await linkProviderToUser(
-              token.id as string,
-              "github",
-              parsed,
-              account.access_token
-            );
-          } else {
-            dbUser = await handleOAuthUser(
-              "github",
-              parsed,
-              account.access_token
-            );
-          }
+          dbUser = await handleOAuthUser(
+            "github",
+            parsed,
+            account.access_token
+          );
         } else if (account.provider === "google") {
           const parsed = parseGoogleProfile(profile as Record<string, unknown>);
-          if (isLinking && token.id) {
-            dbUser = await linkProviderToUser(
-              token.id as string,
-              "google",
-              parsed,
-              account.access_token
-            );
-          } else {
-            dbUser = await handleOAuthUser(
-              "google",
-              parsed,
-              account.access_token
-            );
-          }
+          dbUser = await handleOAuthUser(
+            "google",
+            parsed,
+            account.access_token
+          );
         }
 
         if (dbUser) {
@@ -140,12 +120,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.plan = dbUser.plan;
           }
         }
-      }
-
-      if (token.id && token.mfaEnrolled === undefined) {
-        const dbUser = await getUserById(token.id as string);
-        token.mfaEnrolled = !!(dbUser?.totpSecret && dbUser?.totpEnabled);
-        token.mfaVerified = token.mfaVerified ?? false;
       }
 
       return token;

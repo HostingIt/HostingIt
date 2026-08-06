@@ -52,6 +52,26 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### Local subdomain testing (`fhusr-*.hostingit.online`)
+
+The panel runs on localhost, but **apps still deploy to your remote Dokploy** instance. Free apps get first-level hostnames like `fhusr-my-api.hostingit.online` (Cloudflare orange cloud + free Universal SSL compatible).
+
+1. In `apps/web/.env.local`:
+   ```bash
+   NEXT_PUBLIC_APP_URL=http://localhost:3000
+   NEXT_PUBLIC_BASE_DOMAIN=hostingit.online
+   NEXT_PUBLIC_FREE_SUBDOMAIN_PREFIX=fhusr
+   DOKPLOY_API_URL=https://your-dokploy-host
+   DOKPLOY_API_KEY=your-key
+   ```
+2. In Cloudflare for `hostingit.online`, add **`*`** → Dokploy VPS origin IP. **Proxied (orange cloud)** is fine.
+3. Restart the dev server after env changes (`npm run dev`).
+4. Create an app — live URL looks like `https://fhusr-my-api.hostingit.online`.
+
+Keep the apex (`@`) pointed at the **panel** server. More-specific records (e.g. `www`) override the wildcard.
+
+OAuth callbacks for local dev stay on `http://localhost:3000/api/auth/callback/...` (unchanged).
+
 ### Environment variables
 
 Copy `.env.example` to `apps/web/.env.local`:
@@ -64,13 +84,30 @@ Copy `.env.example` to `apps/web/.env.local`:
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth app credentials |
 | `DOKPLOY_API_URL` | Deploy platform API URL (internal, server-side) |
 | `DOKPLOY_API_KEY` | Deploy platform API key (server-side only) |
-| `NEXT_PUBLIC_BASE_DOMAIN` | Base domain for subdomains |
+| `NEXT_PUBLIC_BASE_DOMAIN` | Apex domain for free app hostnames (`hostingit.online`) |
+| `NEXT_PUBLIC_FREE_SUBDOMAIN_PREFIX` | Prefix for free apps (`fhusr` → `fhusr-{slug}.…`) |
 | `ADMIN_EMAIL` | Bootstrap admin account email (must match OAuth email) |
 
 ### OAuth callback URLs
 
 - GitHub: `{NEXT_PUBLIC_APP_URL}/api/auth/callback/github`
 - Google: `{NEXT_PUBLIC_APP_URL}/api/auth/callback/google`
+
+### GitHub App (required for multi-user deploys)
+
+Users install the **HostingIt GitHub App** and grant repos. Deploys use short-lived installation tokens (not a shared Dokploy GitHub connection).
+
+1. Create a GitHub App: [github.com/settings/apps/new](https://github.com/settings/apps/new)
+2. Set:
+   - **Setup URL:** `{NEXT_PUBLIC_APP_URL}/api/github/app/callback`
+   - **Webhook URL:** `{NEXT_PUBLIC_APP_URL}/api/github/app/webhook`
+   - **Webhook secret:** random string → `GITHUB_APP_WEBHOOK_SECRET`
+   - Permissions: **Contents: Read**, **Metadata: Read**
+   - Events: **Push**, **Installation**, **Installation repositories**
+   - Where can it be installed? **Any account**
+3. Generate a private key; put PEM in `GITHUB_APP_PRIVATE_KEY` (use `\n` for newlines) or base64
+4. Set `GITHUB_APP_ID` (numeric) and `GITHUB_APP_SLUG` (app URL name)
+5. Users: **Settings → Install GitHub App** → grant repos → **New App**
 
 ### Authentication flow
 
@@ -104,14 +141,13 @@ docker build -f apps/web/Dockerfile -t hostingit .
 
 ## Plans
 
-| Plan | Price | Apps | Custom domain |
-|------|-------|------|---------------|
-| Free | $0 | 1 | No |
-| Starter | $5/mo | 3 | Yes |
-| Pro | $10/mo | 10 | Yes |
-| Business | Custom | 100 | Yes |
+| Plan | Price | Apps | RAM/app | Custom domain |
+|------|-------|------|---------|---------------|
+| Free | $0 | 1 | 256 MB | No (subdomain) |
+| Pro | $10/mo | 5 | 512 MB | Yes |
+| Enterprise | Coming soon | Custom | Dedicated | Yes |
 
-Paid plans are activated manually via the admin panel after UPI/PayPal/bank payment.
+Pro is activated manually via the admin panel after UPI/PayPal/bank payment. See `/pricing` for a comparison with Railway.
 
 ## Roadmap
 

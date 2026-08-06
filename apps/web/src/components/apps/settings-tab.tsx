@@ -1,0 +1,316 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert } from "@/components/ui/alert";
+import type { App } from "@/db/schema";
+
+const BUILD_TYPES = [
+  { value: "nixpacks", label: "Auto-detect (Nixpacks)" },
+  { value: "dockerfile", label: "Dockerfile" },
+  { value: "static", label: "Static site" },
+  { value: "railpack", label: "Railpack" },
+];
+
+type Settings = {
+  githubBranch: string;
+  buildPath: string;
+  buildType: string;
+  autoDeploy: boolean;
+  dockerfile: string;
+  dockerContextPath: string;
+  dockerBuildStage: string;
+  publishDirectory: string;
+  isStaticSpa: boolean;
+};
+
+interface SettingsTabProps {
+  app: App;
+  url: string;
+  onChanged: () => void | Promise<void>;
+}
+
+export function SettingsTab({ app, onChanged }: SettingsTabProps) {
+  const router = useRouter();
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [customDomain, setCustomDomain] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/apps/${app.id}/settings`);
+      if (res.ok) {
+        const data = await res.json();
+        setSettings({
+          githubBranch: data.githubBranch ?? app.githubBranch,
+          buildPath: data.buildPath ?? "/",
+          buildType: data.buildType ?? "nixpacks",
+          autoDeploy: data.autoDeploy ?? true,
+          dockerfile: data.dockerfile ?? "Dockerfile",
+          dockerContextPath: data.dockerContextPath ?? ".",
+          dockerBuildStage: data.dockerBuildStage ?? "",
+          publishDirectory: data.publishDirectory ?? "dist",
+          isStaticSpa: data.isStaticSpa ?? false,
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [app.id, app.githubBranch]);
+
+  useEffect(() => {
+    const t = setTimeout(load, 0);
+    return () => clearTimeout(t);
+  }, [load]);
+
+  async function save(redeploy: boolean) {
+    if (!settings) return;
+    setSaving(true);
+    setError("");
+    setMessage("");
+    const response = await fetch(`/api/apps/${app.id}/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...settings, redeploy }),
+    });
+    if (response.ok) {
+      setMessage(redeploy ? "Settings saved and redeploy started." : "Settings saved.");
+      await onChanged();
+    } else {
+      const data = await response.json();
+      setError(data.error ?? "Failed to save settings");
+    }
+    setSaving(false);
+  }
+
+  async function addDomain(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    const response = await fetch(`/api/apps/${app.id}/domain`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ domain: customDomain }),
+    });
+    if (response.ok) {
+      setCustomDomain("");
+      await onChanged();
+    } else {
+      const data = await response.json();
+      setError(data.error ?? "Failed to add domain");
+    }
+    setSaving(false);
+  }
+
+  async function handleDelete() {
+    if (!confirm("Delete this app? This cannot be undone.")) return;
+    setSaving(true);
+    await fetch(`/api/apps/${app.id}`, { method: "DELETE" });
+    router.push("/dashboard/apps");
+  }
+
+  if (loading || !settings) {
+    return (
+      <div className="space-y-2">
+        {[0, 1].map((i) => (
+          <div key={i} className="skeleton skeleton-text h-40 w-full rounded" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {(message || error) && (
+        <Alert variant={error ? "error" : "success"}>{error || message}</Alert>
+      )}
+
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="font-display text-lg">Source & deploy</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="branch">Branch</Label>
+              <Input
+                id="branch"
+                value={settings.githubBranch}
+                onChange={(e) => setSettings({ ...settings, githubBranch: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="buildPath">Root directory</Label>
+              <Input
+                id="buildPath"
+                value={settings.buildPath}
+                onChange={(e) => setSettings({ ...settings, buildPath: e.target.value })}
+                placeholder="/ or apps/web"
+              />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={settings.autoDeploy}
+              onChange={(e) => setSettings({ ...settings, autoDeploy: e.target.checked })}
+              className="rounded border-border"
+            />
+            Auto-deploy on push to branch
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" disabled={saving} onClick={() => save(false)}>
+              Save
+            </Button>
+            <Button
+              disabled={saving}
+              onClick={() => save(true)}
+              className="bg-accent hover:bg-accent-deep"
+            >
+              Save & redeploy
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="font-display text-lg">Build</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted">
+            One HostingIt app = one container. For repos with{" "}
+            <span className="font-mono">frontend/</span> and{" "}
+            <span className="font-mono">backend/</span>, set Root directory to the
+            folder you want online. Use Dockerfile if auto-detect fails.
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="buildType">Build type</Label>
+            <select
+              id="buildType"
+              className="field-select"
+              value={settings.buildType}
+              onChange={(e) => setSettings({ ...settings, buildType: e.target.value })}
+            >
+              {BUILD_TYPES.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {settings.buildType === "dockerfile" && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="dockerfile">Dockerfile path</Label>
+                <Input
+                  id="dockerfile"
+                  value={settings.dockerfile}
+                  onChange={(e) => setSettings({ ...settings, dockerfile: e.target.value })}
+                  placeholder="Dockerfile or docker/Dockerfile"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dockerContext">Docker context</Label>
+                <Input
+                  id="dockerContext"
+                  value={settings.dockerContextPath}
+                  onChange={(e) =>
+                    setSettings({ ...settings, dockerContextPath: e.target.value })
+                  }
+                  placeholder="."
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="dockerBuildStage">Build stage</Label>
+                <Input
+                  id="dockerBuildStage"
+                  value={settings.dockerBuildStage}
+                  onChange={(e) =>
+                    setSettings({ ...settings, dockerBuildStage: e.target.value })
+                  }
+                  placeholder="runner (optional multi-stage target)"
+                />
+                <p className="text-xs text-muted">
+                  For multi-stage Dockerfiles, leave blank for the last stage or set
+                  e.g. runner / production.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {settings.buildType === "static" && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="publishDirectory">Output directory</Label>
+                <Input
+                  id="publishDirectory"
+                  value={settings.publishDirectory}
+                  onChange={(e) =>
+                    setSettings({ ...settings, publishDirectory: e.target.value })
+                  }
+                  placeholder="dist"
+                />
+              </div>
+              <label className="flex items-end gap-2 pb-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={settings.isStaticSpa}
+                  onChange={(e) =>
+                    setSettings({ ...settings, isStaticSpa: e.target.checked })
+                  }
+                  className="rounded border-border"
+                />
+                Single-page app (client-side routing)
+              </label>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="font-display text-lg">Custom domain</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={addDomain} className="flex gap-2">
+            <Input
+              value={customDomain}
+              onChange={(e) => setCustomDomain(e.target.value)}
+              placeholder="app.example.com"
+            />
+            <Button type="submit" disabled={saving || !customDomain}>
+              Add
+            </Button>
+          </form>
+          <p className="mt-2 text-sm text-muted">
+            Requires Pro plan or higher. Point your domain CNAME to your app subdomain.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="border-red-200 dark:border-red-500/30">
+        <CardHeader>
+          <CardTitle className="font-display text-lg text-red-700 dark:text-red-400">Danger zone</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-3 text-sm text-muted">
+            Permanently delete this app and its deployments.
+          </p>
+          <Button variant="destructive" onClick={handleDelete} disabled={saving}>
+            Delete app
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

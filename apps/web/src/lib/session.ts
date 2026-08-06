@@ -1,8 +1,12 @@
+import { cache } from "react";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
+/** Dedupe auth() within a single RSC request tree. */
+export const getSession = cache(async () => auth());
+
 export async function requireAuth() {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) {
     redirect("/login");
   }
@@ -18,6 +22,6 @@ export async function requireAdmin() {
 }
 
 export async function getCurrentUser() {
-  const session = await auth();
+  const session = await getSession();
   return session?.user ?? null;
 }

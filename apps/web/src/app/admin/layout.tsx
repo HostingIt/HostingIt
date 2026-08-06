@@ -6,9 +6,11 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-[calc(100vh-4rem)]">
+    <div className="flex h-svh overflow-hidden bg-background">
       <AdminNav />
-      <div className="flex-1 p-8">{children}</div>
+      <div className="min-w-0 flex-1 overflow-y-auto p-6 sm:p-8">
+        <div className="mx-auto w-full max-w-5xl">{children}</div>
+      </div>
     </div>
   );
 }

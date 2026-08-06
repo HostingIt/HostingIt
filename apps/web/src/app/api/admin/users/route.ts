@@ -26,7 +26,7 @@ export async function GET() {
 const updateUserSchema = z.object({
   userId: z.string().uuid(),
   accountStatus: z.enum(["pending", "active", "suspended"]).optional(),
-  plan: z.enum(["free", "starter", "pro", "business"]).optional(),
+  plan: z.enum(["free", "pro", "enterprise"]).optional(),
 });
 
 export async function PATCH(request: Request) {

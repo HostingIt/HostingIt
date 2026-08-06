@@ -3,16 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { OtpInput } from "@/components/auth/otp-input";
+import { Alert } from "@/components/ui/alert";
 
 export default function Login2FAPage() {
   const router = useRouter();
@@ -23,6 +18,11 @@ export default function Login2FAPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (code.length !== 6) {
+      setError("Enter the 6-digit code from your authenticator app.");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -37,6 +37,7 @@ export default function Login2FAPage() {
 
     if (!response.ok) {
       setError(data.error ?? "Invalid code");
+      setCode("");
       return;
     }
 
@@ -46,41 +47,56 @@ export default function Login2FAPage() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Two-factor authentication</CardTitle>
-          <CardDescription>
-            Enter the 6-digit code from your authenticator app.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <p className="rounded-md bg-red-50 p-3 text-sm text-red-600">
-                {error}
-              </p>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="code">Authentication code</Label>
-              <Input
-                id="code"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                maxLength={6}
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                placeholder="000000"
-                autoFocus
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Verifying..." : "Verify and continue"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+    <div className="hero-plane relative flex min-h-[calc(100vh-4rem)] items-center justify-center overflow-hidden px-4 py-12">
+      <div className="hero-grid absolute inset-0 opacity-50" aria-hidden />
+
+      <div className="relative w-full max-w-md animate-fade-up border border-border bg-surface/95 p-6 sm:p-8">
+        <p className="font-mono text-xs font-medium uppercase tracking-widest text-accent">
+          Verify identity
+        </p>
+        <h1 className="mt-3 font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+          Two-factor authentication
+        </h1>
+        <p className="mt-2 text-sm leading-relaxed text-muted">
+          Enter the 6-digit code from your authenticator app to finish signing
+          in.
+        </p>
+
+        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          {error && <Alert>{error}</Alert>}
+
+          <div className="space-y-2">
+            <Label htmlFor="code" className="text-ink">
+              Authentication code
+            </Label>
+            <OtpInput
+              value={code}
+              onChange={setCode}
+              disabled={loading}
+              autoFocus
+            />
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full bg-accent hover:bg-accent-deep"
+            disabled={loading || code.length !== 6}
+          >
+            {loading ? "Verifying..." : "Verify and continue"}
+          </Button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-muted">
+          Lost your authenticator?{" "}
+          <button
+            type="button"
+            className="font-medium text-ink underline-offset-2 hover:underline"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+          >
+            Sign out
+          </button>
+        </p>
+      </div>
     </div>
   );
 }
