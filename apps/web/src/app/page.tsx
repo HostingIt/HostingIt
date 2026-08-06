@@ -46,8 +46,8 @@ export default function HomePage() {
             className="animate-fade-in animate-drift pointer-events-none absolute bottom-8 right-4 hidden w-[min(440px,42vw)] lg:block"
             aria-hidden
           >
-            <div className="overflow-hidden rounded-lg border border-ink/10 bg-ink/95 shadow-none">
-              <div className="flex items-center gap-1.5 border-b border-white/10 px-3 py-2">
+            <div className="terminal overflow-hidden rounded-lg border border-white/10 shadow-[0_20px_50px_-28px_rgba(0,0,0,0.65)]">
+              <div className="terminal-chrome flex items-center gap-1.5 border-b border-white/10 px-3 py-2">
                 <span className="h-2 w-2 rounded-sm bg-white/25" />
                 <span className="h-2 w-2 rounded-sm bg-white/25" />
                 <span className="h-2 w-2 rounded-sm bg-white/25" />
@@ -55,8 +55,8 @@ export default function HomePage() {
                   deploy · my-api
                 </span>
               </div>
-              <pre className="space-y-1 p-4 font-mono text-[11px] leading-relaxed text-teal-200/90">
-                <code className="block text-white/45">$ hostingit deploy</code>
+              <pre className="space-y-1 p-4 font-mono text-[11px] leading-relaxed text-[var(--terminal-text)]">
+                <code className="block opacity-45">$ hostingit deploy</code>
                 <code className="block">→ cloning github.com/you/api</code>
                 <code className="block">→ building Dockerfile</code>
                 <code className="block">→ provisioning SSL</code>
