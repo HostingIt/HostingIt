@@ -25,10 +25,7 @@ export default function HomePage() {
             </p>
             <div className="animate-fade-up-delay-2 mt-8 flex flex-wrap gap-3">
               <Link href="/signup">
-                <Button
-                  size="lg"
-                  className="bg-ink px-8 text-white hover:bg-ink/90"
-                >
+                <Button size="lg" className="px-8">
                   Start free
                 </Button>
               </Link>
@@ -36,7 +33,7 @@ export default function HomePage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-ink/20 bg-white/60 backdrop-blur-sm hover:bg-white"
+                  className="border-ink/20 bg-surface/70 backdrop-blur-sm hover:bg-surface"
                 >
                   See pricing
                 </Button>
@@ -192,7 +189,7 @@ export default function HomePage() {
           </p>
           <div className="mt-8">
             <Link href="/signup">
-              <Button size="lg" className="bg-accent px-8 hover:bg-accent-deep">
+              <Button size="lg" variant="accent" className="px-8">
                 Create your account
               </Button>
             </Link>

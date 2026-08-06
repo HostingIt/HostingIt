@@ -377,7 +377,7 @@ export function NewAppForm({ repos }: NewAppFormProps) {
           <Button
             type="submit"
             disabled={loading || !selectedRepo || analyzing}
-            className="btn-glow bg-accent hover:bg-accent-deep"
+            variant="accent" className="btn-glow"
           >
             {loading
               ? "Creating..."

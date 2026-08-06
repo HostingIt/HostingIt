@@ -55,7 +55,7 @@ export default async function AppsListPage() {
         description={`${planConfig.name} plan · ${appCount}/${planConfig.maxApps} apps · ${runningCount} running`}
         action={
           <Link href="/dashboard/apps/new">
-            <Button className="btn-glow bg-accent hover:bg-accent-deep">New App</Button>
+            <Button variant="accent" className="btn-glow">New App</Button>
           </Link>
         }
       />
@@ -72,7 +72,7 @@ export default async function AppsListPage() {
               with SSL.
             </p>
             <Link href="/dashboard/apps/new" className="mt-6">
-              <Button size="lg" className="btn-glow bg-accent hover:bg-accent-deep">
+              <Button size="lg" variant="accent" className="btn-glow">
                 Create your first app
               </Button>
             </Link>

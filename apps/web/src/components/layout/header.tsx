@@ -31,9 +31,7 @@ export async function Header() {
           <ThemeToggle />
           {session?.user ? (
             <Link href="/dashboard">
-              <Button size="sm" className="bg-ink hover:bg-ink/90">
-                Dashboard
-              </Button>
+              <Button size="sm">Dashboard</Button>
             </Link>
           ) : (
             <>
@@ -44,9 +42,7 @@ export async function Header() {
                 Login
               </Link>
               <Link href="/signup">
-                <Button size="sm" className="bg-ink hover:bg-ink/90">
-                  Get started
-                </Button>
+                <Button size="sm">Get started</Button>
               </Link>
             </>
           )}

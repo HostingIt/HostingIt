@@ -6,13 +6,12 @@ This document outlines upcoming infrastructure and product directions. Timelines
 
 ## Overview
 
-HostingIt is growing from a single-node MVP into a **multi-surface hosting platform**:
+HostingIt is growing from a single-node MVP into a stronger managed hosting platform:
 
 | Surface | Who it's for | Status |
 |---------|--------------|--------|
 | **HostingIt Cloud** | Indie devs, hobby projects, small apps | Live (MVP) |
 | **HostingIt Infra** | Paid tiers on team-managed infrastructure | Planned — scaling soon |
-| **HostingIt Self-Hosted** | Users who want to run apps on their own hardware | Planned |
 
 Customers always interact through the **HostingIt control panel**. They never manage raw servers or internal tooling directly.
 
@@ -24,7 +23,7 @@ Customers always interact through the **HostingIt control panel**. They never ma
 
 ### Goals
 
-- Dedicated capacity for Starter, Pro, and Business plans
+- Dedicated capacity for Pro and Enterprise plans
 - Multi-region and multi-provider nodes (cloud VPS, bare metal as needed)
 - Better isolation and performance than shared free-tier resources
 - Central routing, SSL, and monitoring managed by the HostingIt team
@@ -58,12 +57,12 @@ Today all apps provision on a single deploy backend. The target architecture:
                     ┌──────────▼──────────┐
                     │   Host scheduler    │
                     │   (plan + region)   │
-                    └──┬────────┬─────┬───┘
-                       │        │     │
-              ┌────────▼──┐ ┌───▼───┐ ┌▼────────────┐
-              │ Free tier │ │ Infra │ │ Self-hosted │
-              │   node    │ │ nodes │ │   agents    │
-              └───────────┘ └───────┘ └─────────────┘
+                    └──┬─────────────┬────┘
+                       │             │
+              ┌────────▼──┐     ┌────▼────┐
+              │ Free tier │     │ Infra   │
+              │   node    │     │ nodes   │
+              └───────────┘     └─────────┘
 ```
 
 ### Rollout phases
@@ -77,41 +76,11 @@ Today all apps provision on a single deploy backend. The target architecture:
 3. **Phase 3 — Regions**  
    EU / US / APAC Infra nodes; user or plan-based region selection.
 
-4. **Phase 4 — Self-hosted agents**  
-   Optional “bring your own server” tier via HostingIt Agent.
-
----
-
-## Self-hosted (bring your own server)
-
-For developers who want HostingIt’s panel and workflow on **their own machine** — homelab, office server, or private VPS.
-
-### Planned flow
-
-1. User installs **HostingIt Agent** on their device (Docker required).
-2. Agent registers with the control plane via a pairing code.
-3. Outbound-only connection (no open SSH from the internet).
-4. Deploy from the same dashboard; app runs locally on their hardware.
-5. Optional: custom domain or tunnel URL for access.
-
-### Use cases
-
-- Local development with production-like deploys
-- Internal tools on private networks
-- Full data sovereignty
-- Teams with existing hardware they want to utilize
-
-### Limitations (expected)
-
-- User responsible for hardware uptime and bandwidth
-- No SLA from HostingIt on self-hosted availability
-- May require tunnel or DNS setup for public URLs
-
 ---
 
 ## Control plane improvements (cross-cutting)
 
-- In-dashboard environment variables
+- Richer project grouping for multi-container products
 - Deploy webhooks and CI integration
 - Automated billing (Stripe / Razorpay)
 - Uptime monitoring and auto-restart
@@ -125,10 +94,10 @@ For developers who want HostingIt’s panel and workflow on **their own machine*
 
 - **One panel** — GitHub/Google sign-in, 2FA, deploy wizard, billing
 - **No customer access** to internal deploy backends or server admin UIs
-- **Best-effort honesty** — clear limits for hobby vs Infra vs self-hosted tiers
+- **Best-effort honesty** — clear limits for hobby vs Infra tiers
 
 ---
 
 ## Contributing / feedback
 
-We're actively building Infra scaling and self-hosted support. If you're on a paid plan or want early access to Self-Hosted beta, contact the team through the dashboard or support email.
+We're actively building Infra scaling. If you're on a paid plan or want early access, contact the team through the dashboard or support email.

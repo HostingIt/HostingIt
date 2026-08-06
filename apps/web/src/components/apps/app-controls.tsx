@@ -44,7 +44,7 @@ export function AppControls({ app, onChanged }: AppControlsProps) {
             size="sm"
             onClick={() => call("control", { action: "start" }, "start")}
             disabled={loading !== null}
-            className="bg-accent hover:bg-accent-deep"
+            variant="accent"
           >
             {loading === "start" ? "Starting…" : "Start"}
           </Button>

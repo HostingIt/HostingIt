@@ -109,7 +109,7 @@ export function DashboardTopNav() {
 
         <div className="ml-auto flex items-center gap-2">
           <Link href="/dashboard/apps/new" className="hidden sm:block">
-            <Button size="sm" className="btn-glow bg-accent hover:bg-accent-deep">
+            <Button size="sm" variant="accent" className="btn-glow">
               New App
             </Button>
           </Link>

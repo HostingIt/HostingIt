@@ -79,7 +79,7 @@ export default function Login2FAPage() {
 
           <Button
             type="submit"
-            className="w-full bg-accent hover:bg-accent-deep"
+            variant="accent" className="w-full"
             disabled={loading || code.length !== 6}
           >
             {loading ? "Verifying..." : "Verify and continue"}

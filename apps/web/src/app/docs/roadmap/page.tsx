@@ -5,9 +5,9 @@ export default function RoadmapPage() {
   return (
     <DocsArticle
       title="Roadmap"
-      description="Where HostingIt is headed — Infra capacity, multi-node scaling, and self-hosted agents."
+      description="Where HostingIt is headed — Infra capacity and multi-node scaling."
     >
-      <h2>Three ways to run</h2>
+      <h2>How you run on HostingIt</h2>
       <table>
         <thead>
           <tr>
@@ -27,16 +27,11 @@ export default function RoadmapPage() {
             <td>Paid plans on team-scaled infrastructure</td>
             <td>Coming soon</td>
           </tr>
-          <tr>
-            <td>HostingIt Self-Hosted</td>
-            <td>Your own server, same panel</td>
-            <td>Planned</td>
-          </tr>
         </tbody>
       </table>
       <p>
-        You always use the same control panel. Provisioning stays behind the
-        scenes — you do not manage raw servers or internal tooling.
+        You always use the same HostingIt panel. Provisioning stays behind the
+        scenes — you deploy apps, we run the infrastructure.
       </p>
 
       <h2>HostingIt Infra</h2>
@@ -63,22 +58,7 @@ export default function RoadmapPage() {
         <li>
           <strong>Regions</strong> — EU, US, APAC where it makes sense
         </li>
-        <li>
-          <strong>Self-hosted agents</strong> — optional bring-your-own-server
-        </li>
       </ol>
-
-      <h2>Self-hosted (bring your own server)</h2>
-      <p>
-        Deploy with HostingIt&apos;s workflow on hardware you already own —
-        homelab, office server, or a VPS.
-      </p>
-      <ul>
-        <li>Install a lightweight HostingIt Agent (Docker required)</li>
-        <li>Pair with your account via a one-time code</li>
-        <li>Deploy from the same dashboard; apps run on your machine</li>
-        <li>Outbound-only agent connection — no exposing SSH to the internet</li>
-      </ul>
 
       <h2>Also planned</h2>
       <ul>

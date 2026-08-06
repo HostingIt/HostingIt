@@ -173,7 +173,7 @@ export function SettingsTab({ app, onChanged }: SettingsTabProps) {
             <Button
               disabled={saving}
               onClick={() => save(true)}
-              className="bg-accent hover:bg-accent-deep"
+              variant="accent"
             >
               Save & redeploy
             </Button>

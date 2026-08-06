@@ -8,12 +8,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-ink text-white hover:bg-ink/90",
+        // ink ↔ background both flip with theme → always contrast
+        default: "bg-ink text-background hover:bg-ink/90",
+        accent: "bg-accent text-white hover:bg-accent-deep",
         destructive: "bg-red-600 text-white hover:bg-red-700",
         outline:
-          "border border-border bg-surface hover:bg-background text-ink",
-        secondary: "bg-background text-ink hover:bg-border/40",
-        ghost: "hover:bg-background text-ink",
+          "border border-border bg-surface text-ink hover:bg-surface-2",
+        secondary: "bg-surface-2 text-ink hover:bg-border/50",
+        ghost: "text-ink hover:bg-surface-2",
         link: "text-ink underline-offset-4 hover:underline",
       },
       size: {
@@ -41,7 +43,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : "button";
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant, size }), className)}
         ref={ref}
         {...props}
       />

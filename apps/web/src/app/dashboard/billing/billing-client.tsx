@@ -159,7 +159,7 @@ export function BillingClient({
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="bg-accent hover:bg-accent-deep"
+                  variant="accent"
                 >
                   {loading ? "Submitting..." : "Submit payment proof"}
                 </Button>

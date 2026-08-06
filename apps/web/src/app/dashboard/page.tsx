@@ -80,7 +80,7 @@ export default async function DashboardOverviewPage() {
         description={`Overview of your ${planConfig.name} workspace`}
         action={
           <Link href="/dashboard/apps/new">
-            <Button className="btn-glow bg-accent hover:bg-accent-deep">New App</Button>
+            <Button variant="accent" className="btn-glow">New App</Button>
           </Link>
         }
       />
@@ -124,7 +124,7 @@ export default async function DashboardOverviewPage() {
                 Connect GitHub and deploy your first app to see it here.
               </p>
               <Link href="/dashboard/apps/new" className="mt-6">
-                <Button className="btn-glow bg-accent hover:bg-accent-deep">
+                <Button variant="accent" className="btn-glow">
                   Create your first app
                 </Button>
               </Link>

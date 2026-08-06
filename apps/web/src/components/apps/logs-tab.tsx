@@ -149,9 +149,8 @@ export function LogsTab({ appId }: { appId: string }) {
           </Button>
         </form>
         <Button
-          variant={live ? "default" : "outline"}
           size="sm"
-          className={live ? "bg-accent hover:bg-accent-deep" : undefined}
+          variant={live ? "accent" : "outline"}
           onClick={() => setLive((v) => !v)}
         >
           {live ? "Live" : "Paused"}

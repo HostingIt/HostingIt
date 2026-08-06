@@ -84,7 +84,7 @@ export function SettingsClient({
             <div className="flex flex-wrap gap-2">
               {profile.githubAppReady ? (
                 <>
-                  <Button asChild size="sm" className="bg-ink hover:bg-ink/90">
+                  <Button asChild size="sm">
                     <a href="/api/github/app/install">
                       {profile.githubAppInstalled
                         ? "Reinstall / change account"
@@ -124,11 +124,7 @@ export function SettingsClient({
               {profile.providers.github ? (
                 <Badge status="active" />
               ) : (
-                <Button
-                  size="sm"
-                  className="bg-ink hover:bg-ink/90"
-                  onClick={() => connectProvider("github")}
-                >
+                <Button size="sm" onClick={() => connectProvider("github")}>
                   Connect GitHub
                 </Button>
               )}

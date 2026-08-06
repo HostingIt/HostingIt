@@ -64,7 +64,7 @@ export default async function NewAppPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
-            <Button asChild className="bg-ink hover:bg-ink/90">
+            <Button asChild>
               <a href={configureUrl} target="_blank" rel="noopener noreferrer">
                 Configure repo access
               </a>

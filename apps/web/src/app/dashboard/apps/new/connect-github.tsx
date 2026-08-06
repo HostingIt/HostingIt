@@ -31,7 +31,7 @@ export function ConnectGithubPrompt({ appConfigured }: ConnectGithubPromptProps)
         </CardHeader>
         <CardContent className="space-y-3">
           {appConfigured ? (
-            <Button asChild className="bg-ink hover:bg-ink/90">
+            <Button asChild>
               <a href="/api/github/app/install">Install GitHub App</a>
             </Button>
           ) : (

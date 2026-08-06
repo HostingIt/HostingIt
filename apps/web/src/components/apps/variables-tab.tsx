@@ -116,7 +116,7 @@ export function VariablesTab({ app, onChanged }: VariablesTabProps) {
             <Button
               disabled={saving}
               onClick={() => save(true)}
-              className="bg-accent hover:bg-accent-deep"
+              variant="accent"
             >
               Save & redeploy
             </Button>

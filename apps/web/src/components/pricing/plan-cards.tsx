@@ -44,7 +44,7 @@ export function PlanCards({
               </span>
             )}
             {isCurrent && (
-              <span className="absolute -top-2.5 left-4 bg-ink px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-white">
+              <span className="absolute -top-2.5 left-4 bg-ink px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-background">
                 Current plan
               </span>
             )}
@@ -139,9 +139,7 @@ function PlanCardAction({
     if (planKey === "pro") {
       return (
         <Link href="/dashboard/billing" className="block">
-          <Button className="w-full bg-ink hover:bg-ink/90">
-            Upgrade to Pro
-          </Button>
+          <Button className="w-full">Upgrade to Pro</Button>
         </Link>
       );
     }
@@ -159,9 +157,7 @@ function PlanCardAction({
 
   return (
     <Link href="/signup" className="block">
-      <Button className="w-full bg-ink hover:bg-ink/90">
-        Get Pro
-      </Button>
+      <Button className="w-full">Get Pro</Button>
     </Link>
   );
 }
