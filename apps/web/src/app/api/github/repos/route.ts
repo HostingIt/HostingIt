@@ -3,7 +3,7 @@ import { getSession } from "@/lib/session";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { getCachedGithubRepos } from "@/lib/github-repos";
+import { listInstallationRepos, isGithubAppConfigured } from "@/lib/github-app";
 
 export async function GET() {
   const session = await getSession();
@@ -11,24 +11,28 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!isGithubAppConfigured()) {
+    return NextResponse.json(
+      { error: "GitHub App is not configured" },
+      { status: 503 }
+    );
+  }
+
   const [user] = await db
-    .select({ githubAccessToken: users.githubAccessToken })
+    .select({ githubInstallationId: users.githubInstallationId })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);
 
-  if (!user?.githubAccessToken) {
+  if (!user?.githubInstallationId) {
     return NextResponse.json(
-      { error: "GitHub not connected", connected: false },
+      { error: "GitHub App is not installed", connected: false },
       { status: 400 }
     );
   }
 
   try {
-    const repos = await getCachedGithubRepos(
-      session.user.id,
-      user.githubAccessToken
-    );
+    const repos = await listInstallationRepos(user.githubInstallationId);
     return NextResponse.json({ connected: true, repos });
   } catch {
     return NextResponse.json(

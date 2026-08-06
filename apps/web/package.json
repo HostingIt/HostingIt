@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/lib/repo-analyze.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/repo-analyze.test.ts src/lib/env-secrets.test.ts",
 
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

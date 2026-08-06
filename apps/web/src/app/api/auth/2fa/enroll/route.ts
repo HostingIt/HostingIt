@@ -14,6 +14,11 @@ import {
   verifyTotpCode,
 } from "@/lib/totp";
 import { setMfaStampCookie } from "@/lib/mfa-stamp";
+import {
+  checkRateLimit,
+  clearRateLimit,
+  getClientIp,
+} from "@/lib/rate-limit";
 
 const PENDING_COOKIE = "pending_totp_secret";
 const PENDING_MAX_AGE = 600;
@@ -69,10 +74,25 @@ const enrollSchema = z.object({
   code: z.string().length(6),
 });
 
+const ENROLL_LIMIT = 5;
+const ENROLL_WINDOW_MS = 15 * 60 * 1000;
+
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rateKey = `totp-enroll:${session.user.id}:${getClientIp(request)}`;
+  const limited = checkRateLimit(rateKey, ENROLL_LIMIT, ENROLL_WINDOW_MS);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: "Too many attempts. Try again later." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(limited.retryAfterSec) },
+      }
+    );
   }
 
   const body = await request.json();
@@ -101,6 +121,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid code" }, { status: 400 });
   }
 
+  clearRateLimit(rateKey);
   await db
     .update(users)
     .set({

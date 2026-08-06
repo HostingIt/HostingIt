@@ -9,6 +9,7 @@ import { getOwnedApp } from "@/lib/app-access";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
 import { parseEnvString, serializeEnvVars } from "@/lib/env-vars";
 import { envVarListSchema } from "@/lib/env-var-schema";
+import { mergeEnvVarUpdates, toMaskedEnvResponse } from "@/lib/env-secrets";
 import { toClientError } from "@/lib/safe-error";
 
 export async function GET(
@@ -30,13 +31,13 @@ export async function GET(
     const dokploy = getDokployClient();
     const remote = await dokploy.getApplication(app.dokployAppId);
 
+    const env = parseEnvString(remote.env);
+    const buildSecrets = parseEnvString(remote.buildSecrets);
+
     return NextResponse.json({
-      env: parseEnvString(remote.env).map((row) => ({ ...row, secret: false })),
+      env: toMaskedEnvResponse(env),
       buildArgs: parseEnvString(remote.buildArgs),
-      buildSecrets: parseEnvString(remote.buildSecrets).map((row) => ({
-        ...row,
-        secret: true,
-      })),
+      buildSecrets: toMaskedEnvResponse(buildSecrets, { forceSecret: true }),
     });
   } catch (error) {
     console.error("Fetch env error:", error);
@@ -80,14 +81,23 @@ export async function PUT(
 
   try {
     const dokploy = getDokployClient();
+    const remote = await dokploy.getApplication(app.dokployAppId);
+    const existingEnv = parseEnvString(remote.env);
+    const existingBuildSecrets = parseEnvString(remote.buildSecrets);
+
+    const env = mergeEnvVarUpdates(parsed.data.env, existingEnv);
+    const buildSecrets = parsed.data.buildSecrets
+      ? mergeEnvVarUpdates(parsed.data.buildSecrets, existingBuildSecrets)
+      : undefined;
+
     await dokploy.saveEnvironment({
       applicationId: app.dokployAppId,
-      env: serializeEnvVars(parsed.data.env) || null,
+      env: serializeEnvVars(env) || null,
       buildArgs: parsed.data.buildArgs
         ? serializeEnvVars(parsed.data.buildArgs) || null
         : null,
-      buildSecrets: parsed.data.buildSecrets
-        ? serializeEnvVars(parsed.data.buildSecrets) || null
+      buildSecrets: buildSecrets
+        ? serializeEnvVars(buildSecrets) || null
         : null,
       createEnvFile: true,
     });

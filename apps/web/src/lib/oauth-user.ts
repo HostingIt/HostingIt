@@ -34,8 +34,7 @@ export function parseGoogleProfile(profile: Record<string, unknown>): OAuthProfi
 
 export async function handleOAuthUser(
   provider: OAuthProvider,
-  profile: OAuthProfile,
-  accessToken?: string | null
+  profile: OAuthProfile
 ): Promise<User> {
   const { email, name, providerId } = profile;
 
@@ -64,10 +63,10 @@ export async function handleOAuthUser(
       updatedAt: new Date(),
     };
 
-    if (provider === "github" && accessToken) {
+    if (provider === "github") {
       Object.assign(updates, {
         githubId: providerId,
-        githubAccessToken: accessToken,
+        githubAccessToken: null,
       });
     }
     if (provider === "google") {
@@ -105,7 +104,7 @@ export async function handleOAuthUser(
     if (provider === "github") {
       Object.assign(linkUpdates, {
         githubId: providerId,
-        githubAccessToken: accessToken ?? byEmail.githubAccessToken,
+        githubAccessToken: null,
       });
     } else {
       Object.assign(linkUpdates, { googleId: providerId });
@@ -130,7 +129,7 @@ export async function handleOAuthUser(
       emailVerified: true,
       role: adminEmail === email ? "admin" : "user",
       githubId: provider === "github" ? providerId : null,
-      githubAccessToken: provider === "github" ? accessToken : null,
+      githubAccessToken: null,
       googleId: provider === "google" ? providerId : null,
     })
     .returning();
@@ -141,8 +140,7 @@ export async function handleOAuthUser(
 export async function linkProviderToUser(
   userId: string,
   provider: OAuthProvider,
-  profile: OAuthProfile,
-  accessToken?: string | null
+  profile: OAuthProfile
 ): Promise<User> {
   const [currentUser] = await db
     .select()
@@ -180,7 +178,7 @@ export async function linkProviderToUser(
   if (provider === "github") {
     Object.assign(linkUpdates, {
       githubId: profile.providerId,
-      githubAccessToken: accessToken ?? currentUser.githubAccessToken,
+      githubAccessToken: null,
     });
   } else {
     Object.assign(linkUpdates, { googleId: profile.providerId });

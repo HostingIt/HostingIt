@@ -22,7 +22,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     GitHub({
       clientId: process.env.AUTH_GITHUB_ID,
       clientSecret: process.env.AUTH_GITHUB_SECRET,
-      authorization: { params: { scope: "read:user repo" } },
+      authorization: { params: { scope: "read:user" } },
     }),
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
@@ -44,16 +44,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             await linkProviderToUser(
               session!.user!.id,
               "github",
-              parsed,
-              account.access_token
+              parsed
             );
           } else if (account.provider === "google") {
             const parsed = parseGoogleProfile(profile as Record<string, unknown>);
             await linkProviderToUser(
               session!.user!.id,
               "google",
-              parsed,
-              account.access_token
+              parsed
             );
           } else {
             return false;
@@ -82,8 +80,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const parsed = parseGitHubProfile(profile as Record<string, unknown>);
           dbUser = await handleOAuthUser(
             "github",
-            parsed,
-            account.access_token
+            parsed
           );
           // Fresh login — drop prior MFA stamp
           token.mfaVerified = false;
@@ -96,8 +93,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const parsed = parseGoogleProfile(profile as Record<string, unknown>);
           dbUser = await handleOAuthUser(
             "google",
-            parsed,
-            account.access_token
+            parsed
           );
           token.mfaVerified = false;
           try {
