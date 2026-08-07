@@ -41,10 +41,8 @@ export default function Login2FAPage() {
       return;
     }
 
-    // Refresh JWT so it picks up the server-set MFA stamp cookie
-    await update();
-    router.push("/dashboard");
-    router.refresh();
+    // Hard refresh so JWT picks up the server-set MFA stamp cookie
+    window.location.href = "/dashboard";
   }
 
   return (

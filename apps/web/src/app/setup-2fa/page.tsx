@@ -96,10 +96,8 @@ export default function Setup2FAPage() {
       return;
     }
 
-    // Refresh JWT so it picks up enrollment + server MFA stamp
-    await update();
-    router.push("/dashboard");
-    router.refresh();
+    // Hard refresh so JWT picks up enrollment + server MFA stamp
+    window.location.href = "/dashboard";
   }
 
   async function copyManualKey() {
