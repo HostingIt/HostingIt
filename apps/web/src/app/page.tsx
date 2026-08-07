@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { PlanCardsSection } from "@/components/pricing/plan-cards-section";
 import { getAppHostname } from "@/lib/dokploy";
@@ -13,9 +14,27 @@ export default function HomePage() {
 
         <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl flex-col justify-center px-4 pb-24 pt-16 lg:pb-32">
           <div className="max-w-2xl">
-            <p className="animate-fade-up font-display text-5xl font-extrabold tracking-tight text-ink sm:text-6xl lg:text-7xl">
-              Hosting<span className="text-accent">It</span>
-            </p>
+            <div className="animate-fade-up flex items-center gap-4 sm:gap-5">
+              <Image
+                src="/brand/mark-light.png"
+                alt=""
+                width={72}
+                height={72}
+                className="h-14 w-14 object-contain sm:h-16 sm:w-16 dark:hidden"
+                priority
+              />
+              <Image
+                src="/brand/mark-dark.png"
+                alt=""
+                width={72}
+                height={72}
+                className="hidden h-14 w-14 object-contain sm:h-16 sm:w-16 dark:block"
+                priority
+              />
+              <p className="font-display text-5xl font-extrabold tracking-tight text-ink sm:text-6xl lg:text-7xl">
+                Hosting<span className="text-accent">It</span>
+              </p>
+            </div>
             <h1 className="animate-fade-up-delay mt-6 font-display text-2xl font-semibold leading-snug tracking-tight text-ink sm:text-3xl">
               Deploy Docker apps from GitHub in minutes.
             </h1>

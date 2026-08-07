@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { BrandLogo } from "@/components/brand-logo";
 import { getSession } from "@/lib/session";
 
 export async function Header() {
@@ -9,12 +10,7 @@ export async function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-        <Link
-          href="/"
-          className="font-display text-xl font-bold tracking-tight text-ink"
-        >
-          Hosting<span className="text-accent">It</span>
-        </Link>
+        <BrandLogo priority />
         <nav className="flex items-center gap-1 sm:gap-4">
           <Link
             href="/pricing"

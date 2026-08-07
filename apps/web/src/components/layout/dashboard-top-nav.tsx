@@ -7,6 +7,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ChevronDown, CreditCard, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { BrandLogo } from "@/components/brand-logo";
 import { cn } from "@/lib/utils";
 
 const mainNav = [
@@ -80,12 +81,7 @@ export function DashboardTopNav() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:px-8">
-        <Link
-          href="/dashboard"
-          className="shrink-0 font-display text-lg font-bold tracking-tight text-ink"
-        >
-          Hosting<span className="text-accent">It</span>
-        </Link>
+        <BrandLogo href="/dashboard" size="sm" className="shrink-0" />
 
         <nav className="hidden flex-1 items-center gap-1 md:flex">
           {mainNav.map((item) => {

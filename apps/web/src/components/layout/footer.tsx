@@ -1,13 +1,12 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
 
 export function Footer() {
   return (
     <footer className="border-t border-border bg-surface">
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="font-display text-lg font-bold tracking-tight text-ink">
-            Hosting<span className="text-accent">It</span>
-          </p>
+          <BrandLogo />
           <p className="mt-2 max-w-sm text-sm text-muted">
             Managed Docker hosting for indie developers. Best-effort — not for
             mission-critical production.
