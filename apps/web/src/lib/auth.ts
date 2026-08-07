@@ -128,7 +128,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             ? (session as { mfaProof: string }).mfaProof
             : undefined;
 
-        if (proof && verifyMfaStamp(proof, token.id as string)) {
+        if (proof && (await verifyMfaStamp(proof, token.id as string))) {
           token.mfaVerified = true;
           token.mfaEnrolled = true;
         }

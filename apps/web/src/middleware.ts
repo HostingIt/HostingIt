@@ -20,7 +20,7 @@ function isMfaAllowedPath(pathname: string): boolean {
   );
 }
 
-export default auth((req) => {
+export default auth(async (req) => {
   const { pathname } = req.nextUrl;
   const session = req.auth;
   const isLoggedIn = !!session?.user?.id;
@@ -63,7 +63,10 @@ export default auth((req) => {
   // completed TOTP — treat as enrolled + verified even if the JWT is stale.
   const stampOk =
     !!session.user.id &&
-    verifyMfaStamp(req.cookies.get(MFA_STAMP_COOKIE)?.value, session.user.id);
+    (await verifyMfaStamp(
+      req.cookies.get(MFA_STAMP_COOKIE)?.value,
+      session.user.id
+    ));
 
   const mfaEnrolled = Boolean(session.user.mfaEnrolled) || stampOk;
   const mfaVerified = Boolean(session.user.mfaVerified) || stampOk;

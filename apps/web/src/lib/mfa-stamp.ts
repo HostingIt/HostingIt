@@ -1,4 +1,3 @@
-import { createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 
 export const MFA_STAMP_COOKIE = "hostingit_mfa";
@@ -26,18 +25,50 @@ export function mfaCookieOptions(maxAge = MAX_AGE_SEC) {
   };
 }
 
-/** Signed proof that TOTP succeeded for this user (httpOnly cookie). */
-export function createMfaStamp(userId: string): string {
+function bytesToBase64Url(bytes: ArrayBuffer): string {
+  const arr = new Uint8Array(bytes);
+  let bin = "";
+  for (let i = 0; i < arr.length; i++) {
+    bin += String.fromCharCode(arr[i]!);
+  }
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function timingSafeEqualString(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let out = 0;
+  for (let i = 0; i < a.length; i++) {
+    out |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return out === 0;
+}
+
+/** Edge + Node compatible HMAC-SHA256 (Web Crypto — no node:crypto). */
+async function hmacSha256Base64Url(payload: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(secret()),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(payload));
+  return bytesToBase64Url(sig);
+}
+
+/** Signed proof that TOTP succeeded for this user. */
+export async function createMfaStamp(userId: string): Promise<string> {
   const exp = Math.floor(Date.now() / 1000) + MAX_AGE_SEC;
   const payload = `${userId}.${exp}`;
-  const sig = createHmac("sha256", secret()).update(payload).digest("base64url");
+  const sig = await hmacSha256Base64Url(payload);
   return `${payload}.${sig}`;
 }
 
-export function verifyMfaStamp(
+export async function verifyMfaStamp(
   stamp: string | undefined,
   userId: string
-): boolean {
+): Promise<boolean> {
   if (!stamp) return false;
   const parts = stamp.split(".");
   if (parts.length !== 3) return false;
@@ -47,19 +78,13 @@ export function verifyMfaStamp(
   if (!Number.isFinite(exp) || exp < Math.floor(Date.now() / 1000)) return false;
 
   const payload = `${uid}.${expStr}`;
-  const expected = createHmac("sha256", secret())
-    .update(payload)
-    .digest("base64url");
-  try {
-    return timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
-  } catch {
-    return false;
-  }
+  const expected = await hmacSha256Base64Url(payload);
+  return timingSafeEqualString(sig, expected);
 }
 
 export async function setMfaStampCookie(userId: string): Promise<void> {
   const jar = await cookies();
-  jar.set(MFA_STAMP_COOKIE, createMfaStamp(userId), mfaCookieOptions());
+  jar.set(MFA_STAMP_COOKIE, await createMfaStamp(userId), mfaCookieOptions());
 }
 
 export async function clearMfaStampCookie(): Promise<void> {

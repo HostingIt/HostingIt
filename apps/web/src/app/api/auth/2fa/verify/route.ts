@@ -73,7 +73,7 @@ export async function POST(request: Request) {
 
   clearRateLimit(rateKey);
 
-  const mfaProof = createMfaStamp(session.user.id);
+  const mfaProof = await createMfaStamp(session.user.id);
   const response = NextResponse.json({
     success: true,
     mfaVerified: true,

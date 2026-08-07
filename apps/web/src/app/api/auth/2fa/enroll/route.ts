@@ -132,7 +132,7 @@ export async function POST(request: Request) {
     })
     .where(eq(users.id, session.user.id));
 
-  const mfaProof = createMfaStamp(session.user.id);
+  const mfaProof = await createMfaStamp(session.user.id);
   const response = NextResponse.json({
     success: true,
     mfaEnrolled: true,
