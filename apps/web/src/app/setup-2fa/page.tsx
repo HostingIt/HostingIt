@@ -21,29 +21,56 @@ export default function Setup2FAPage() {
   const [fetching, setFetching] = useState(true);
 
   useEffect(() => {
-    if (session?.user?.mfaEnrolled && session.user.mfaVerified) {
+    if (!session?.user) return;
+
+    if (session.user.mfaEnrolled && session.user.mfaVerified) {
       router.replace("/dashboard");
       return;
     }
 
-    fetch("/api/auth/2fa/enroll")
-      .then(async (res) => {
+    if (session.user.mfaEnrolled && !session.user.mfaVerified) {
+      router.replace("/login/2fa");
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadEnrollment() {
+      try {
+        const res = await fetch("/api/auth/2fa/enroll");
+        const data = await res.json();
+
         if (!res.ok) {
-          const data = await res.json();
           throw new Error(data.error ?? "Failed to start 2FA setup");
         }
-        return res.json();
-      })
-      .then((data) => {
-        setQrDataUrl(data.qrDataUrl);
-        setManualKey(data.manualKey ?? null);
-        setFetching(false);
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to load QR code");
-        setFetching(false);
-      });
-  }, [session, router]);
+
+        if (data.alreadyEnrolled) {
+          await update();
+          if (!cancelled) router.replace("/login/2fa");
+          return;
+        }
+
+        if (!cancelled) {
+          setQrDataUrl(data.qrDataUrl);
+          setManualKey(data.manualKey ?? null);
+          setFetching(false);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "Failed to load QR code"
+          );
+          setFetching(false);
+        }
+      }
+    }
+
+    void loadEnrollment();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session, router, update]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

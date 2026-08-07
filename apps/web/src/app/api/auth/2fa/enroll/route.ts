@@ -44,7 +44,7 @@ export async function GET() {
   }
 
   if (user.totpEnabled && user.totpSecret) {
-    return NextResponse.json({ error: "2FA already enrolled" }, { status: 400 });
+    return NextResponse.json({ alreadyEnrolled: true });
   }
 
   const { secret, otpauthUrl } = createTotpEnrollment(user.email);
