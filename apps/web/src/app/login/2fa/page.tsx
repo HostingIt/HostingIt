@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,8 +8,6 @@ import { OtpInput } from "@/components/auth/otp-input";
 import { Alert } from "@/components/ui/alert";
 
 export default function Login2FAPage() {
-  const router = useRouter();
-  const { update } = useSession();
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
