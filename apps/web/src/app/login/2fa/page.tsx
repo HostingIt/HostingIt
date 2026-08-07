@@ -38,10 +38,11 @@ export default function Login2FAPage() {
       return;
     }
 
-    try {
+    // Bake signed MFA proof into the JWT (cookie alone is unreliable behind proxies)
+    if (typeof data.mfaProof === "string") {
+      await update({ mfaProof: data.mfaProof });
+    } else {
       await update();
-    } catch {
-      // Stamp cookie alone is enough for middleware fallback
     }
 
     window.location.href = "/dashboard";

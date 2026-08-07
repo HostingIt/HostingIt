@@ -73,11 +73,12 @@ export async function POST(request: Request) {
 
   clearRateLimit(rateKey);
 
-  const response = NextResponse.json({ success: true, mfaVerified: true });
-  response.cookies.set(
-    MFA_STAMP_COOKIE,
-    createMfaStamp(session.user.id),
-    mfaCookieOptions()
-  );
+  const mfaProof = createMfaStamp(session.user.id);
+  const response = NextResponse.json({
+    success: true,
+    mfaVerified: true,
+    mfaProof,
+  });
+  response.cookies.set(MFA_STAMP_COOKIE, mfaProof, mfaCookieOptions());
   return response;
 }

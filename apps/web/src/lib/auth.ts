@@ -8,7 +8,11 @@ import {
   parseGoogleProfile,
   getUserById,
 } from "@/lib/oauth-user";
-import { clearMfaStampCookie, readMfaStampVerified } from "@/lib/mfa-stamp";
+import {
+  clearMfaStampCookie,
+  readMfaStampVerified,
+  verifyMfaStamp,
+} from "@/lib/mfa-stamp";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Required behind reverse proxies (Dokploy / Traefik / Cloudflare)
@@ -69,7 +73,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return false;
       }
     },
-    async jwt({ token, account, profile, trigger }) {
+    async jwt({ token, account, profile, trigger, session }) {
       if (account && profile) {
         let dbUser = null;
         const isLinking = Boolean(token.id && token.mfaVerified);
@@ -108,8 +112,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
       }
 
-      // Sync enrollment from DB on session update (after enroll/verify).
-      // Middleware also trusts the MFA stamp cookie if the JWT is still stale.
       if (trigger === "update" && token.id) {
         const dbUser = await getUserById(token.id as string);
         if (dbUser) {
@@ -118,6 +120,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.plan = dbUser.plan;
           token.accountStatus = dbUser.accountStatus;
         }
+
+        // Signed proof from enroll/verify APIs — do not trust bare client flags
+        const proof =
+          session &&
+          typeof (session as { mfaProof?: unknown }).mfaProof === "string"
+            ? (session as { mfaProof: string }).mfaProof
+            : undefined;
+
+        if (proof && verifyMfaStamp(proof, token.id as string)) {
+          token.mfaVerified = true;
+          token.mfaEnrolled = true;
+        }
       }
 
       if (token.id) {
@@ -125,7 +139,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const stamped = await readMfaStampVerified(token.id as string);
           if (stamped) {
             token.mfaVerified = true;
-            // Stamp is only issued after successful TOTP → also enrolled
             token.mfaEnrolled = true;
           }
         } catch {

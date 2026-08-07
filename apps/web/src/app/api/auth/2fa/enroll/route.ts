@@ -132,16 +132,14 @@ export async function POST(request: Request) {
     })
     .where(eq(users.id, session.user.id));
 
+  const mfaProof = createMfaStamp(session.user.id);
   const response = NextResponse.json({
     success: true,
     mfaEnrolled: true,
     mfaVerified: true,
+    mfaProof,
   });
   response.cookies.set(PENDING_COOKIE, "", { path: "/", maxAge: 0 });
-  response.cookies.set(
-    MFA_STAMP_COOKIE,
-    createMfaStamp(session.user.id),
-    mfaCookieOptions()
-  );
+  response.cookies.set(MFA_STAMP_COOKIE, mfaProof, mfaCookieOptions());
   return response;
 }
