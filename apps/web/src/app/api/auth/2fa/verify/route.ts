@@ -5,7 +5,11 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { decryptSecret, verifyTotpCode } from "@/lib/totp";
-import { setMfaStampCookie } from "@/lib/mfa-stamp";
+import {
+  MFA_STAMP_COOKIE,
+  createMfaStamp,
+  mfaCookieOptions,
+} from "@/lib/mfa-stamp";
 import {
   checkRateLimit,
   clearRateLimit,
@@ -68,7 +72,12 @@ export async function POST(request: Request) {
   }
 
   clearRateLimit(rateKey);
-  await setMfaStampCookie(session.user.id);
 
-  return NextResponse.json({ success: true, mfaVerified: true });
+  const response = NextResponse.json({ success: true, mfaVerified: true });
+  response.cookies.set(
+    MFA_STAMP_COOKIE,
+    createMfaStamp(session.user.id),
+    mfaCookieOptions()
+  );
+  return response;
 }

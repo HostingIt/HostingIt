@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { OtpInput } from "@/components/auth/otp-input";
 import { Alert } from "@/components/ui/alert";
 
 export default function Login2FAPage() {
+  const { update } = useSession();
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,15 +30,20 @@ export default function Login2FAPage() {
     });
 
     const data = await response.json();
-    setLoading(false);
 
     if (!response.ok) {
+      setLoading(false);
       setError(data.error ?? "Invalid code");
       setCode("");
       return;
     }
 
-    // Hard refresh so JWT picks up the server-set MFA stamp cookie
+    try {
+      await update();
+    } catch {
+      // Stamp cookie alone is enough for middleware fallback
+    }
+
     window.location.href = "/dashboard";
   }
 

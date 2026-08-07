@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -9,8 +8,7 @@ import { OtpInput } from "@/components/auth/otp-input";
 import { Alert } from "@/components/ui/alert";
 
 export default function Setup2FAPage() {
-  const router = useRouter();
-  const { data: session, update } = useSession();
+  const { data: session, status, update } = useSession();
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [manualKey, setManualKey] = useState<string | null>(null);
   const [showManual, setShowManual] = useState(false);
@@ -19,19 +17,28 @@ export default function Setup2FAPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const loadedRef = useRef(false);
 
   useEffect(() => {
-    if (!session?.user) return;
+    if (status === "loading") return;
+
+    if (!session?.user) {
+      window.location.href = "/login";
+      return;
+    }
 
     if (session.user.mfaEnrolled && session.user.mfaVerified) {
-      router.replace("/dashboard");
+      window.location.href = "/dashboard";
       return;
     }
 
     if (session.user.mfaEnrolled && !session.user.mfaVerified) {
-      router.replace("/login/2fa");
+      window.location.href = "/login/2fa";
       return;
     }
+
+    if (loadedRef.current) return;
+    loadedRef.current = true;
 
     let cancelled = false;
 
@@ -46,7 +53,7 @@ export default function Setup2FAPage() {
 
         if (data.alreadyEnrolled) {
           await update();
-          if (!cancelled) router.replace("/login/2fa");
+          if (!cancelled) window.location.href = "/login/2fa";
           return;
         }
 
@@ -70,7 +77,7 @@ export default function Setup2FAPage() {
     return () => {
       cancelled = true;
     };
-  }, [session, router, update]);
+  }, [session, status, update]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -89,14 +96,20 @@ export default function Setup2FAPage() {
     });
 
     const data = await response.json();
-    setLoading(false);
 
     if (!response.ok) {
+      setLoading(false);
       setError(data.error ?? "Invalid code");
       return;
     }
 
-    // Hard refresh so JWT picks up enrollment + server MFA stamp
+    // Rewrite JWT so mfaEnrolled/mfaVerified match DB + stamp cookie
+    try {
+      await update();
+    } catch {
+      // Stamp cookie alone is enough for middleware fallback
+    }
+
     window.location.href = "/dashboard";
   }
 

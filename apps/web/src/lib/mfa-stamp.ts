@@ -10,6 +10,22 @@ function secret(): string {
   return value;
 }
 
+function cookieSecure(): boolean {
+  const authUrl = process.env.AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
+  if (authUrl.startsWith("https://")) return true;
+  return process.env.NODE_ENV === "production";
+}
+
+export function mfaCookieOptions(maxAge = MAX_AGE_SEC) {
+  return {
+    httpOnly: true as const,
+    secure: cookieSecure(),
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge,
+  };
+}
+
 /** Signed proof that TOTP succeeded for this user (httpOnly cookie). */
 export function createMfaStamp(userId: string): string {
   const exp = Math.floor(Date.now() / 1000) + MAX_AGE_SEC;
@@ -43,13 +59,7 @@ export function verifyMfaStamp(
 
 export async function setMfaStampCookie(userId: string): Promise<void> {
   const jar = await cookies();
-  jar.set(MFA_STAMP_COOKIE, createMfaStamp(userId), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: MAX_AGE_SEC,
-  });
+  jar.set(MFA_STAMP_COOKIE, createMfaStamp(userId), mfaCookieOptions());
 }
 
 export async function clearMfaStampCookie(): Promise<void> {

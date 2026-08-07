@@ -13,7 +13,11 @@ import {
   decryptPendingSecret,
   verifyTotpCode,
 } from "@/lib/totp";
-import { setMfaStampCookie } from "@/lib/mfa-stamp";
+import {
+  MFA_STAMP_COOKIE,
+  createMfaStamp,
+  mfaCookieOptions,
+} from "@/lib/mfa-stamp";
 import {
   checkRateLimit,
   clearRateLimit,
@@ -54,20 +58,17 @@ export async function GET() {
     color: { dark: "#0b1220", light: "#ffffff" },
   });
 
-  const cookieStore = await cookies();
-  cookieStore.set(PENDING_COOKIE, encryptPendingSecret(secret), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: PENDING_MAX_AGE,
-    path: "/",
-  });
-
-  return NextResponse.json({
+  const response = NextResponse.json({
     qrDataUrl,
     otpauthUrl,
     manualKey: secret,
   });
+  response.cookies.set(
+    PENDING_COOKIE,
+    encryptPendingSecret(secret),
+    mfaCookieOptions(PENDING_MAX_AGE)
+  );
+  return response;
 }
 
 const enrollSchema = z.object({
@@ -131,8 +132,16 @@ export async function POST(request: Request) {
     })
     .where(eq(users.id, session.user.id));
 
-  cookieStore.delete(PENDING_COOKIE);
-  await setMfaStampCookie(session.user.id);
-
-  return NextResponse.json({ success: true, mfaEnrolled: true, mfaVerified: true });
+  const response = NextResponse.json({
+    success: true,
+    mfaEnrolled: true,
+    mfaVerified: true,
+  });
+  response.cookies.set(PENDING_COOKIE, "", { path: "/", maxAge: 0 });
+  response.cookies.set(
+    MFA_STAMP_COOKIE,
+    createMfaStamp(session.user.id),
+    mfaCookieOptions()
+  );
+  return response;
 }

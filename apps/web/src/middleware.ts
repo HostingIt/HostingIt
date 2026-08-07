@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import { MFA_STAMP_COOKIE, verifyMfaStamp } from "@/lib/mfa-stamp";
 
 const mfaAllowedPaths = ["/setup-2fa", "/login/2fa"];
 const mfaApiPrefix = "/api/auth/2fa";
@@ -58,8 +59,14 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  const mfaEnrolled = Boolean(session.user.mfaEnrolled);
-  const mfaVerified = Boolean(session.user.mfaVerified);
+  // JWT lags after enroll/verify. A valid MFA stamp means the user already
+  // completed TOTP — treat as enrolled + verified even if the JWT is stale.
+  const stampOk =
+    !!session.user.id &&
+    verifyMfaStamp(req.cookies.get(MFA_STAMP_COOKIE)?.value, session.user.id);
+
+  const mfaEnrolled = Boolean(session.user.mfaEnrolled) || stampOk;
+  const mfaVerified = Boolean(session.user.mfaVerified) || stampOk;
 
   if (!mfaEnrolled) {
     if (isApi) {

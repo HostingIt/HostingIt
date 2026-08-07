@@ -78,11 +78,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           dbUser = await getUserById(token.id as string);
         } else if (account.provider === "github") {
           const parsed = parseGitHubProfile(profile as Record<string, unknown>);
-          dbUser = await handleOAuthUser(
-            "github",
-            parsed
-          );
-          // Fresh login — drop prior MFA stamp
+          dbUser = await handleOAuthUser("github", parsed);
           token.mfaVerified = false;
           try {
             await clearMfaStampCookie();
@@ -91,10 +87,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
         } else if (account.provider === "google") {
           const parsed = parseGoogleProfile(profile as Record<string, unknown>);
-          dbUser = await handleOAuthUser(
-            "google",
-            parsed
-          );
+          dbUser = await handleOAuthUser("google", parsed);
           token.mfaVerified = false;
           try {
             await clearMfaStampCookie();
@@ -115,8 +108,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
       }
 
+      // Sync enrollment from DB on session update (after enroll/verify).
+      // Middleware also trusts the MFA stamp cookie if the JWT is still stale.
       if (trigger === "update" && token.id) {
-        // Never trust client-provided mfaVerified — only DB + signed stamp
         const dbUser = await getUserById(token.id as string);
         if (dbUser) {
           token.mfaEnrolled = !!(dbUser.totpSecret && dbUser.totpEnabled);
@@ -127,9 +121,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       if (token.id) {
-        const stamped = await readMfaStampVerified(token.id as string);
-        if (stamped) {
-          token.mfaVerified = true;
+        try {
+          const stamped = await readMfaStampVerified(token.id as string);
+          if (stamped) {
+            token.mfaVerified = true;
+            // Stamp is only issued after successful TOTP → also enrolled
+            token.mfaEnrolled = true;
+          }
+        } catch {
+          // ignore (edge / no cookie store)
         }
       }
 
