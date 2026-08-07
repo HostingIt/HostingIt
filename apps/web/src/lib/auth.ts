@@ -4,8 +4,8 @@ import Google from "next-auth/providers/google";
 import {
   handleOAuthUser,
   linkProviderToUser,
-  parseGitHubProfile,
   parseGoogleProfile,
+  resolveGitHubProfile,
   getUserById,
 } from "@/lib/oauth-user";
 import {
@@ -13,6 +13,19 @@ import {
   readMfaStampVerified,
   verifyMfaStamp,
 } from "@/lib/mfa-stamp";
+
+async function sessionIsMfaVerified(
+  userId: string | undefined,
+  flag: boolean | undefined
+): Promise<boolean> {
+  if (flag) return true;
+  if (!userId) return false;
+  try {
+    return await readMfaStampVerified(userId);
+  } catch {
+    return false;
+  }
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Required behind reverse proxies (Dokploy / Traefik / Cloudflare)
@@ -26,7 +39,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     GitHub({
       clientId: process.env.AUTH_GITHUB_ID,
       clientSecret: process.env.AUTH_GITHUB_SECRET,
-      authorization: { params: { scope: "read:user" } },
+      // user:email required so private GitHub emails match an existing Google account
+      authorization: { params: { scope: "read:user user:email" } },
     }),
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
@@ -39,24 +53,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       try {
         const session = await auth();
-        const isLinking = Boolean(session?.user?.id && session.user.mfaVerified);
+        const mfaOk = await sessionIsMfaVerified(
+          session?.user?.id,
+          session?.user?.mfaVerified
+        );
+        const isLinking = Boolean(session?.user?.id && mfaOk);
 
         // Linking runs here (needs live session). Fresh sign-in DB work is in jwt only.
         if (isLinking) {
           if (account.provider === "github") {
-            const parsed = parseGitHubProfile(profile as Record<string, unknown>);
-            await linkProviderToUser(
-              session!.user!.id,
-              "github",
-              parsed
+            const parsed = await resolveGitHubProfile(
+              profile as Record<string, unknown>,
+              account.access_token
             );
+            await linkProviderToUser(session!.user!.id, "github", parsed);
           } else if (account.provider === "google") {
-            const parsed = parseGoogleProfile(profile as Record<string, unknown>);
-            await linkProviderToUser(
-              session!.user!.id,
-              "google",
-              parsed
+            const parsed = parseGoogleProfile(
+              profile as Record<string, unknown>
             );
+            await linkProviderToUser(session!.user!.id, "google", parsed);
           } else {
             return false;
           }
@@ -75,39 +90,49 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async jwt({ token, account, profile, trigger, session }) {
       if (account && profile) {
-        let dbUser = null;
-        const isLinking = Boolean(token.id && token.mfaVerified);
+        const previousUserId = token.id as string | undefined;
+        const previousMfaVerified = await sessionIsMfaVerified(
+          previousUserId,
+          Boolean(token.mfaVerified)
+        );
+        const isLinking = Boolean(previousUserId && previousMfaVerified);
 
-        if (isLinking && token.id) {
-          dbUser = await getUserById(token.id as string);
+        let dbUser = null;
+
+        if (isLinking && previousUserId) {
+          // Provider already linked in signIn — keep the same user + MFA session
+          dbUser = await getUserById(previousUserId);
         } else if (account.provider === "github") {
-          const parsed = parseGitHubProfile(profile as Record<string, unknown>);
+          const parsed = await resolveGitHubProfile(
+            profile as Record<string, unknown>,
+            account.access_token
+          );
           dbUser = await handleOAuthUser("github", parsed);
-          token.mfaVerified = false;
-          try {
-            await clearMfaStampCookie();
-          } catch {
-            // ignore (edge / no cookie store)
-          }
         } else if (account.provider === "google") {
-          const parsed = parseGoogleProfile(profile as Record<string, unknown>);
+          const parsed = parseGoogleProfile(
+            profile as Record<string, unknown>
+          );
           dbUser = await handleOAuthUser("google", parsed);
-          token.mfaVerified = false;
-          try {
-            await clearMfaStampCookie();
-          } catch {
-            // ignore
-          }
         }
 
         if (dbUser) {
+          const sameUser = previousUserId === dbUser.id;
           token.id = dbUser.id;
           token.role = dbUser.role;
           token.plan = dbUser.plan;
           token.accountStatus = dbUser.accountStatus;
           token.mfaEnrolled = !!(dbUser.totpSecret && dbUser.totpEnabled);
-          if (!isLinking) {
+
+          if (isLinking || (sameUser && previousMfaVerified)) {
+            // Connecting another provider (or re-auth) must not bounce to /login/2fa
+            token.mfaVerified = true;
+          } else {
             token.mfaVerified = false;
+            try {
+              await clearMfaStampCookie();
+            } catch {
+              // ignore
+            }
           }
         }
       }

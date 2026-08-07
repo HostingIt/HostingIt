@@ -23,6 +23,60 @@ export function parseGitHubProfile(profile: Record<string, unknown>): OAuthProfi
   };
 }
 
+/**
+ * Prefer public profile email; otherwise fetch primary verified email with the
+ * OAuth token (requires user:email scope). Avoids creating a duplicate account
+ * when GitHub hides the email that matches the user's Google login.
+ */
+export async function resolveGitHubProfile(
+  profile: Record<string, unknown>,
+  accessToken?: string | null
+): Promise<OAuthProfile> {
+  const base = parseGitHubProfile(profile);
+  const login = profile.login as string | undefined;
+  const noreply =
+    login != null && base.email === `${login}@users.noreply.github.com`;
+  const needsLookup =
+    !profile.email ||
+    noreply ||
+    base.email.endsWith("@users.noreply.github.com");
+
+  if (!needsLookup || !accessToken) {
+    return base;
+  }
+
+  try {
+    const res = await fetch("https://api.github.com/user/emails", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      cache: "no-store",
+    });
+    if (!res.ok) return base;
+
+    const emails = (await res.json()) as Array<{
+      email: string;
+      primary: boolean;
+      verified: boolean;
+    }>;
+
+    const pick =
+      emails.find((e) => e.primary && e.verified) ??
+      emails.find((e) => e.verified) ??
+      emails[0];
+
+    if (pick?.email) {
+      return { ...base, email: pick.email.toLowerCase() };
+    }
+  } catch {
+    // fall through to profile email / noreply
+  }
+
+  return base;
+}
+
 export function parseGoogleProfile(profile: Record<string, unknown>): OAuthProfile {
   return {
     email: String(profile.email ?? "").toLowerCase(),
