@@ -28,7 +28,6 @@ async function sessionIsMfaVerified(
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  // Required behind reverse proxies (Dokploy / Traefik / Cloudflare)
   trustHost: true,
   session: { strategy: "jwt" },
   pages: {
@@ -39,7 +38,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     GitHub({
       clientId: process.env.AUTH_GITHUB_ID,
       clientSecret: process.env.AUTH_GITHUB_SECRET,
-      // user:email required so private GitHub emails match an existing Google account
       authorization: { params: { scope: "read:user user:email" } },
     }),
     Google({
@@ -59,7 +57,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         );
         const isLinking = Boolean(session?.user?.id && mfaOk);
 
-        // Linking runs here (needs live session). Fresh sign-in DB work is in jwt only.
+        // Settings "connect provider" while already MFA-verified
         if (isLinking) {
           if (account.provider === "github") {
             const parsed = await resolveGitHubProfile(
@@ -97,23 +95,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         );
         const isLinking = Boolean(previousUserId && previousMfaVerified);
 
-        let dbUser = null;
+        let userId: string | null = null;
 
         if (isLinking && previousUserId) {
-          // Provider already linked in signIn — keep the same user + MFA session
-          dbUser = await getUserById(previousUserId);
+          userId = previousUserId;
         } else if (account.provider === "github") {
           const parsed = await resolveGitHubProfile(
             profile as Record<string, unknown>,
             account.access_token
           );
-          dbUser = await handleOAuthUser("github", parsed);
+          const dbUser = await handleOAuthUser("github", parsed);
+          userId = dbUser.id;
         } else if (account.provider === "google") {
           const parsed = parseGoogleProfile(
             profile as Record<string, unknown>
           );
-          dbUser = await handleOAuthUser("google", parsed);
+          const dbUser = await handleOAuthUser("google", parsed);
+          userId = dbUser.id;
         }
+
+        // Always re-read DB so MFA flags match the canonical email account
+        const dbUser = userId ? await getUserById(userId) : null;
 
         if (dbUser) {
           const sameUser = previousUserId === dbUser.id;
@@ -121,12 +123,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.role = dbUser.role;
           token.plan = dbUser.plan;
           token.accountStatus = dbUser.accountStatus;
+          // This is what sends enrolled users to /login/2fa (not /setup-2fa)
           token.mfaEnrolled = !!(dbUser.totpSecret && dbUser.totpEnabled);
 
           if (isLinking || (sameUser && previousMfaVerified)) {
-            // Connecting another provider (or re-auth) must not bounce to /login/2fa
             token.mfaVerified = true;
           } else {
+            // Fresh login (e.g. Google account, then GitHub with same email)
             token.mfaVerified = false;
             try {
               await clearMfaStampCookie();
@@ -146,7 +149,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.accountStatus = dbUser.accountStatus;
         }
 
-        // Signed proof from enroll/verify APIs — do not trust bare client flags
         const proof =
           session &&
           typeof (session as { mfaProof?: unknown }).mfaProof === "string"
@@ -167,7 +169,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.mfaEnrolled = true;
           }
         } catch {
-          // ignore (edge / no cookie store)
+          // ignore
         }
       }
 

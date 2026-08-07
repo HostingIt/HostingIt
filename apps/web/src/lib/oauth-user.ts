@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { users, type User } from "@/db/schema";
 
@@ -8,6 +8,15 @@ export interface OAuthProfile {
   email: string;
   name: string | null;
   providerId: string;
+}
+
+function isPlaceholderEmail(email: string): boolean {
+  const e = email.toLowerCase();
+  return (
+    e.endsWith("@users.noreply.github.com") ||
+    e.endsWith("@github.local") ||
+    e === "unknown@github.local"
+  );
 }
 
 export function parseGitHubProfile(profile: Record<string, unknown>): OAuthProfile {
@@ -25,23 +34,14 @@ export function parseGitHubProfile(profile: Record<string, unknown>): OAuthProfi
 
 /**
  * Prefer public profile email; otherwise fetch primary verified email with the
- * OAuth token (requires user:email scope). Avoids creating a duplicate account
- * when GitHub hides the email that matches the user's Google login.
+ * OAuth token (requires user:email scope).
  */
 export async function resolveGitHubProfile(
   profile: Record<string, unknown>,
   accessToken?: string | null
 ): Promise<OAuthProfile> {
   const base = parseGitHubProfile(profile);
-  const login = profile.login as string | undefined;
-  const noreply =
-    login != null && base.email === `${login}@users.noreply.github.com`;
-  const needsLookup =
-    !profile.email ||
-    noreply ||
-    base.email.endsWith("@users.noreply.github.com");
-
-  if (!needsLookup || !accessToken) {
+  if (!isPlaceholderEmail(base.email) || !accessToken) {
     return base;
   }
 
@@ -71,7 +71,7 @@ export async function resolveGitHubProfile(
       return { ...base, email: pick.email.toLowerCase() };
     }
   } catch {
-    // fall through to profile email / noreply
+    // fall through
   }
 
   return base;
@@ -85,6 +85,75 @@ export function parseGoogleProfile(profile: Record<string, unknown>): OAuthProfi
   };
 }
 
+function providerColumn(provider: OAuthProvider) {
+  return provider === "github" ? users.githubId : users.googleId;
+}
+
+async function clearProviderId(
+  provider: OAuthProvider,
+  providerId: string,
+  exceptUserId: string
+): Promise<void> {
+  const col = providerColumn(provider);
+  await db
+    .update(users)
+    .set(
+      provider === "github"
+        ? { githubId: null, updatedAt: new Date() }
+        : { googleId: null, updatedAt: new Date() }
+    )
+    .where(and(eq(col, providerId), ne(users.id, exceptUserId)));
+}
+
+async function attachProvider(
+  userId: string,
+  provider: OAuthProvider,
+  providerId: string,
+  name: string | null
+): Promise<User> {
+  await clearProviderId(provider, providerId, userId);
+
+  const updates: Partial<User> = {
+    emailVerified: true,
+    updatedAt: new Date(),
+  };
+
+  if (provider === "github") {
+    Object.assign(updates, { githubId: providerId, githubAccessToken: null });
+  } else {
+    Object.assign(updates, { googleId: providerId });
+  }
+
+  const [current] = await db
+    .select({ name: users.name })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (name && !current?.name) {
+    Object.assign(updates, { name });
+  }
+
+  await db.update(users).set(updates).where(eq(users.id, userId));
+
+  const [fresh] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!fresh) throw new Error("User not found after provider attach");
+  return fresh;
+}
+
+function accountPriority(user: User): number {
+  let score = 0;
+  if (user.totpSecret && user.totpEnabled) score += 8;
+  if (user.googleId) score += 4;
+  if (user.githubId) score += 2;
+  if (!isPlaceholderEmail(user.email)) score += 1;
+  return score;
+}
+
+/**
+ * Sign-in / sign-up via OAuth.
+ * Real email wins: Google account with MFA must be reused when GitHub shares that email.
+ */
 export async function handleOAuthUser(
   provider: OAuthProvider,
   profile: OAuthProfile
@@ -95,81 +164,60 @@ export async function handleOAuthUser(
     throw new Error("OAuth provider did not return an email");
   }
 
-  const providerMatch =
-    provider === "github"
-      ? eq(users.githubId, providerId)
-      : eq(users.googleId, providerId);
+  const col = providerColumn(provider);
 
   const [byProvider] = await db
     .select()
     .from(users)
-    .where(providerMatch)
+    .where(eq(col, providerId))
     .limit(1);
+
+  const [byEmail] = isPlaceholderEmail(email)
+    ? [undefined]
+    : await db.select().from(users).where(eq(users.email, email)).limit(1);
+
+  // Same email as an existing account → that account (keeps MFA). Move provider onto it.
+  if (byEmail) {
+    if (byEmail.accountStatus === "suspended") {
+      throw new Error("ACCOUNT_SUSPENDED");
+    }
+    return attachProvider(byEmail.id, provider, providerId, name);
+  }
 
   if (byProvider) {
     if (byProvider.accountStatus === "suspended") {
       throw new Error("ACCOUNT_SUSPENDED");
     }
 
-    const updates: Partial<User> = {
-      emailVerified: true,
-      updatedAt: new Date(),
-    };
-
-    if (provider === "github") {
-      Object.assign(updates, {
-        githubId: providerId,
-        githubAccessToken: null,
-      });
-    }
-    if (provider === "google") {
-      Object.assign(updates, { googleId: providerId });
-    }
-    if (name && !byProvider.name) {
-      Object.assign(updates, { name });
-    }
-
-    const [updated] = await db
-      .update(users)
-      .set(updates)
-      .where(eq(users.id, byProvider.id))
-      .returning();
-
-    return updated;
-  }
-
-  const [byEmail] = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, email))
-    .limit(1);
-
-  if (byEmail) {
-    if (byEmail.accountStatus === "suspended") {
-      throw new Error("ACCOUNT_SUSPENDED");
+    // Upgrade placeholder email if we finally have a real one
+    if (
+      !isPlaceholderEmail(email) &&
+      isPlaceholderEmail(byProvider.email) &&
+      byProvider.email !== email
+    ) {
+      const [emailTaken] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+      if (emailTaken && emailTaken.id !== byProvider.id) {
+        if (emailTaken.accountStatus === "suspended") {
+          throw new Error("ACCOUNT_SUSPENDED");
+        }
+        // Prefer Google+MFA account over a noreply GitHub stub
+        const keep =
+          accountPriority(emailTaken) >= accountPriority(byProvider)
+            ? emailTaken
+            : byProvider;
+        return attachProvider(keep.id, provider, providerId, name);
+      }
+      await db
+        .update(users)
+        .set({ email, emailVerified: true, updatedAt: new Date() })
+        .where(eq(users.id, byProvider.id));
     }
 
-    const linkUpdates: Partial<User> = {
-      emailVerified: true,
-      updatedAt: new Date(),
-    };
-
-    if (provider === "github") {
-      Object.assign(linkUpdates, {
-        githubId: providerId,
-        githubAccessToken: null,
-      });
-    } else {
-      Object.assign(linkUpdates, { googleId: providerId });
-    }
-
-    const [linked] = await db
-      .update(users)
-      .set(linkUpdates)
-      .where(eq(users.id, byEmail.id))
-      .returning();
-
-    return linked;
+    return attachProvider(byProvider.id, provider, providerId, name);
   }
 
   const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
@@ -212,42 +260,21 @@ export async function linkProviderToUser(
   const [owner] = await db
     .select()
     .from(users)
-    .where(
-      provider === "github"
-        ? eq(users.githubId, profile.providerId)
-        : eq(users.googleId, profile.providerId)
-    )
+    .where(eq(providerColumn(provider), profile.providerId))
     .limit(1);
 
   if (owner && owner.id !== userId) {
+    // If the other row is a weak noreply stub, reclaim the provider id
+    if (
+      accountPriority(currentUser) > accountPriority(owner) ||
+      isPlaceholderEmail(owner.email)
+    ) {
+      return attachProvider(userId, provider, profile.providerId, profile.name);
+    }
     throw new Error("PROVIDER_IN_USE");
   }
 
-  const linkUpdates: Partial<User> = {
-    emailVerified: true,
-    updatedAt: new Date(),
-  };
-
-  if (provider === "github") {
-    Object.assign(linkUpdates, {
-      githubId: profile.providerId,
-      githubAccessToken: null,
-    });
-  } else {
-    Object.assign(linkUpdates, { googleId: profile.providerId });
-  }
-
-  if (profile.name && !currentUser.name) {
-    Object.assign(linkUpdates, { name: profile.name });
-  }
-
-  const [linked] = await db
-    .update(users)
-    .set(linkUpdates)
-    .where(eq(users.id, userId))
-    .returning();
-
-  return linked;
+  return attachProvider(userId, provider, profile.providerId, profile.name);
 }
 
 export async function getUserById(id: string): Promise<User | null> {
@@ -259,11 +286,10 @@ export async function getUserByProvider(
   provider: OAuthProvider,
   providerId: string
 ): Promise<User | null> {
-  const match =
-    provider === "github"
-      ? eq(users.githubId, providerId)
-      : eq(users.googleId, providerId);
-
-  const [user] = await db.select().from(users).where(match).limit(1);
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(providerColumn(provider), providerId))
+    .limit(1);
   return user ?? null;
 }
