@@ -59,7 +59,6 @@ export async function DELETE(request: Request) {
     .select({
       id: users.id,
       email: users.email,
-      role: users.role,
       totpSecret: users.totpSecret,
       totpEnabled: users.totpEnabled,
     })
@@ -69,13 +68,6 @@ export async function DELETE(request: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  if (user.role === "admin") {
-    return NextResponse.json(
-      { error: "Admin accounts cannot be deleted from the dashboard." },
-      { status: 403 }
-    );
   }
 
   if (
