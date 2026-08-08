@@ -1,32 +1,34 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { apps, users } from "@/db/schema";
-import { getDokployClient } from "@/lib/dokploy";
-
-function isProvisionedDokployAppId(id: string): boolean {
-  return id.length > 0 && !id.startsWith("pending:");
-}
+import {
+  deleteDokployApplication,
+  deleteDokployProject,
+  getDokployClientOrNull,
+} from "@/lib/dokploy-cleanup";
 
 /** Remove Dokploy workloads then delete the user (DB cascades apps, sessions, etc.). */
 export async function deleteUserAccount(userId: string): Promise<void> {
-  const userApps = await db
-    .select()
-    .from(apps)
-    .where(eq(apps.userId, userId));
+  const [user] = await db
+    .select({
+      dokployProjectId: users.dokployProjectId,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
 
-  const dokploy = getDokployClient();
+  const dokploy = getDokployClientOrNull();
 
-  for (const app of userApps) {
-    if (!isProvisionedDokployAppId(app.dokployAppId)) {
-      continue;
-    }
-    try {
-      if (app.dokployDomainId) {
-        await dokploy.deleteDomain(app.dokployDomainId);
-      }
-      await dokploy.deleteApplication(app.dokployAppId);
-    } catch (error) {
-      console.error("Dokploy cleanup error for app:", app.id, error);
+  if (dokploy && user?.dokployProjectId) {
+    await deleteDokployProject(dokploy, user.dokployProjectId);
+  } else if (dokploy) {
+    const userApps = await db
+      .select()
+      .from(apps)
+      .where(eq(apps.userId, userId));
+
+    for (const app of userApps) {
+      await deleteDokployApplication(dokploy, app);
     }
   }
 

@@ -157,16 +157,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (proof && (await verifyMfaStamp(proof, token.id as string))) {
           token.mfaVerified = true;
-          token.mfaEnrolled = true;
         }
       }
 
       if (token.id) {
+        const dbUser = await getUserById(token.id as string);
+        if (!dbUser) {
+          return {};
+        }
+
+        token.role = dbUser.role;
+        token.plan = dbUser.plan;
+        token.accountStatus = dbUser.accountStatus;
+        token.mfaEnrolled = !!(dbUser.totpSecret && dbUser.totpEnabled);
+
         try {
           const stamped = await readMfaStampVerified(token.id as string);
-          if (stamped) {
+          if (stamped && dbUser.totpEnabled) {
             token.mfaVerified = true;
-            token.mfaEnrolled = true;
+          } else if (!dbUser.totpEnabled) {
+            token.mfaVerified = false;
           }
         } catch {
           // ignore

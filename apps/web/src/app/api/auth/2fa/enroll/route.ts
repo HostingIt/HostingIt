@@ -12,6 +12,7 @@ import {
   encryptPendingSecret,
   decryptPendingSecret,
   verifyTotpCode,
+  PENDING_TOTP_COOKIE,
 } from "@/lib/totp";
 import {
   MFA_STAMP_COOKIE,
@@ -24,7 +25,6 @@ import {
   getClientIp,
 } from "@/lib/rate-limit";
 
-const PENDING_COOKIE = "pending_totp_secret";
 const PENDING_MAX_AGE = 600;
 
 export async function GET() {
@@ -64,7 +64,7 @@ export async function GET() {
     manualKey: secret,
   });
   response.cookies.set(
-    PENDING_COOKIE,
+    PENDING_TOTP_COOKIE,
     encryptPendingSecret(secret),
     mfaCookieOptions(PENDING_MAX_AGE)
   );
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
   }
 
   const cookieStore = await cookies();
-  const pending = cookieStore.get(PENDING_COOKIE)?.value;
+  const pending = cookieStore.get(PENDING_TOTP_COOKIE)?.value;
   if (!pending) {
     return NextResponse.json(
       { error: "Enrollment expired. Refresh and scan a new QR code." },
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
     mfaVerified: true,
     mfaProof,
   });
-  response.cookies.set(PENDING_COOKIE, "", { path: "/", maxAge: 0 });
+  response.cookies.set(PENDING_TOTP_COOKIE, "", { path: "/", maxAge: 0 });
   response.cookies.set(MFA_STAMP_COOKIE, mfaProof, mfaCookieOptions());
   return response;
 }

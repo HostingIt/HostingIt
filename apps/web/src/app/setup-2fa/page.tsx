@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,8 +17,6 @@ export default function Setup2FAPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
-  const loadedRef = useRef(false);
-
   useEffect(() => {
     if (status === "loading") return;
 
@@ -37,12 +35,15 @@ export default function Setup2FAPage() {
       return;
     }
 
-    if (loadedRef.current) return;
-    loadedRef.current = true;
-
+    const userId = session.user.id;
     let cancelled = false;
 
     async function loadEnrollment() {
+      setFetching(true);
+      setError("");
+      setQrDataUrl(null);
+      setManualKey(null);
+
       try {
         const res = await fetch("/api/auth/2fa/enroll");
         const data = await res.json();
@@ -60,13 +61,15 @@ export default function Setup2FAPage() {
         if (!cancelled) {
           setQrDataUrl(data.qrDataUrl);
           setManualKey(data.manualKey ?? null);
-          setFetching(false);
         }
       } catch (err) {
         if (!cancelled) {
           setError(
             err instanceof Error ? err.message : "Failed to load QR code"
           );
+        }
+      } finally {
+        if (!cancelled) {
           setFetching(false);
         }
       }
@@ -77,7 +80,7 @@ export default function Setup2FAPage() {
     return () => {
       cancelled = true;
     };
-  }, [session, status, update]);
+  }, [session?.user?.id, status, update]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

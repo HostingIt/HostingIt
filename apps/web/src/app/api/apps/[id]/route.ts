@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { eq, and } from "drizzle-orm";
+import { eq, and, count } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { apps } from "@/db/schema";
-import { getDokployClient, getAppPublicUrl } from "@/lib/dokploy";
+import { getAppPublicUrl } from "@/lib/dokploy";
+import { deleteAppFromDokploy } from "@/lib/dokploy-app-delete";
 
 export async function GET(
   _request: Request,
@@ -53,15 +54,12 @@ export async function DELETE(
     return NextResponse.json({ error: "App not found" }, { status: 404 });
   }
 
-  try {
-    const dokploy = getDokployClient();
-    if (app.dokployDomainId) {
-      await dokploy.deleteDomain(app.dokployDomainId);
-    }
-    await dokploy.deleteApplication(app.dokployAppId);
-  } catch (error) {
-    console.error("Dokploy delete error:", error);
-  }
+  const [{ value: userAppCount }] = await db
+    .select({ value: count() })
+    .from(apps)
+    .where(eq(apps.userId, session.user.id));
+
+  await deleteAppFromDokploy(app, userAppCount);
 
   await db.delete(apps).where(eq(apps.id, app.id));
 

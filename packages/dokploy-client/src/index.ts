@@ -293,6 +293,14 @@ export class DokployClient {
     });
   }
 
+  /** Permanently removes a project and all environments, apps, and related data. */
+  async deleteProject(projectId: string): Promise<void> {
+    await this.request("/api/project.remove", {
+      method: "POST",
+      body: JSON.stringify({ projectId }),
+    });
+  }
+
   async createApplication(input: CreateApplicationInput): Promise<Application> {
     const data = await this.request<Application | { applicationId?: string }>(
       "/api/application.create",

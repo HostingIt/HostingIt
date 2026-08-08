@@ -6,7 +6,7 @@ import { users } from "@/db/schema";
 import { requireApiUser } from "@/lib/api-auth";
 import { deleteUserAccount } from "@/lib/delete-account";
 import { MFA_STAMP_COOKIE, mfaCookieOptions } from "@/lib/mfa-stamp";
-import { decryptSecret, verifyTotpCode } from "@/lib/totp";
+import { decryptSecret, verifyTotpCode, PENDING_TOTP_COOKIE } from "@/lib/totp";
 import {
   checkRateLimit,
   clearRateLimit,
@@ -121,5 +121,6 @@ export async function DELETE(request: Request) {
     ...mfaCookieOptions(0),
     maxAge: 0,
   });
+  response.cookies.set(PENDING_TOTP_COOKIE, "", { path: "/", maxAge: 0 });
   return response;
 }

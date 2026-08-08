@@ -67,3 +67,6 @@ export function encryptPendingSecret(secret: string): string {
 export function decryptPendingSecret(stored: string): string {
   return decryptSecret(stored);
 }
+
+/** HttpOnly cookie holding encrypted TOTP secret until enrollment completes. */
+export const PENDING_TOTP_COOKIE = "pending_totp_secret";
