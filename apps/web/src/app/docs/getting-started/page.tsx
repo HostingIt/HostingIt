@@ -32,7 +32,7 @@ export default function GettingStartedPage() {
           app.
         </li>
         <li>
-          When the deploy finishes, open your live URL — something like{" "}
+          When the deploy finishes, open your live URL: something like{" "}
           <code>{exampleHost}</code>.
         </li>
       </ol>

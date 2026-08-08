@@ -21,7 +21,7 @@ export function DeployTargetPicker({
   return (
     <div className={cn("space-y-2", className)}>
       <p className="text-sm text-muted">
-        This repo has multiple services. We picked the best default — change if
+        This repo has multiple services. We picked the best default; change if
         you need a different one.
       </p>
       <div className="space-y-2" role="radiogroup" aria-label="Deploy target">

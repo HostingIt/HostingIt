@@ -19,7 +19,7 @@ export default async function PricingPage() {
             Simple, predictable pricing
           </h1>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-            Flat monthly plans — no RAM meters, no CPU surprises. Free is
+            Flat monthly plans: no RAM meters, no CPU surprises. Free is
             available now; Pro paid upgrades are coming soon.
           </p>
           {isLoggedIn && (
@@ -39,7 +39,7 @@ export default async function PricingPage() {
 
         <p className="mt-8 text-center text-sm text-muted">
           Only the Free plan is open right now. Pro and Enterprise billing will
-          unlock later — no payment flow yet.
+          unlock later: no payment flow yet.
         </p>
 
         <RailwayComparison />

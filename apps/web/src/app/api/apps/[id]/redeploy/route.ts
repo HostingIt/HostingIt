@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { eq, and } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 import { db } from "@/db";
-import { apps, deployments, users } from "@/db/schema";
+import { apps, users } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
 import { syncDokployGitSource } from "@/lib/deploy-git";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
+import { syncDeploymentsFromDokploy } from "@/lib/deployments";
 import { toClientError } from "@/lib/safe-error";
 
 export async function POST(
@@ -70,10 +71,7 @@ export async function POST(
       .set({ status: "deploying", updatedAt: new Date() })
       .where(eq(apps.id, row.app.id));
 
-    await db.insert(deployments).values({
-      appId: row.app.id,
-      status: "running",
-    });
+    await syncDeploymentsFromDokploy(dokploy, row.app.id, row.app.dokployAppId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

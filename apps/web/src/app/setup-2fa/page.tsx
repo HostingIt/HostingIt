@@ -133,7 +133,7 @@ export default function Setup2FAPage() {
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">
           Required for every HostingIt account. Scan with Google Authenticator,
-          Authy, or any TOTP app — then enter the code to continue.
+          Authy, or any TOTP app, then enter the code to continue.
         </p>
 
         <ol className="mt-6 flex gap-2 font-mono text-[10px] uppercase tracking-wider text-muted">

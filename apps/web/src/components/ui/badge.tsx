@@ -7,6 +7,9 @@ const statusStyles: Record<string, string> = {
   running: "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400",
   stopped: "bg-zinc-100 text-zinc-800 dark:bg-zinc-500/15 dark:text-zinc-400",
   error: "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400",
+  failed: "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400",
+  success:
+    "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400",
   pending:
     "bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-400",
   approved: "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400",
@@ -21,6 +24,8 @@ const dotStyles: Record<string, string> = {
   running: "bg-green-500",
   stopped: "bg-zinc-400",
   error: "bg-red-500",
+  failed: "bg-red-500",
+  success: "bg-green-500",
   pending: "bg-yellow-500",
   approved: "bg-green-500",
   rejected: "bg-red-500",

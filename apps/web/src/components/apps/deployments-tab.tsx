@@ -19,7 +19,7 @@ interface DeploymentsTabProps {
 }
 
 function formatTime(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "N/A";
   try {
     return new Date(iso).toLocaleString();
   } catch {
@@ -28,7 +28,7 @@ function formatTime(iso: string | null): string {
 }
 
 function duration(start: string | null, end: string | null): string {
-  if (!start) return "—";
+  if (!start) return "N/A";
   const s = new Date(start).getTime();
   const e = end ? new Date(end).getTime() : Date.now();
   const sec = Math.max(0, Math.round((e - s) / 1000));
@@ -201,7 +201,7 @@ export function DeploymentsTab({
       const data = await res.json();
       if (res.ok) setRescan(data as RepoAnalyzeResult);
     } catch {
-      // ignore — hints still show without alternatives
+      // ignore: hints still show without alternatives
     } finally {
       setRescanLoading(false);
     }

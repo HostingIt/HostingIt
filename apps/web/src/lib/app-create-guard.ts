@@ -4,7 +4,7 @@ import type { DokployClient } from "@hostingit/dokploy-client";
 import { db } from "@/db";
 import { apps } from "@/db/schema";
 import { getPlanLimit } from "@/lib/plans";
-import { slugify } from "@/lib/utils";
+import { slugifyAppName, MAX_APP_SLUG_LENGTH } from "@/lib/utils";
 import { getAppHostname } from "@/lib/dokploy";
 
 export class AppPlanLimitError extends Error {
@@ -28,7 +28,7 @@ async function allocateSlug(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   name: string
 ): Promise<string> {
-  const baseSlug = slugify(name);
+  const baseSlug = slugifyAppName(name);
   const taken = await tx
     .select({ slug: apps.slug })
     .from(apps)
@@ -37,7 +37,11 @@ async function allocateSlug(
   let slug = baseSlug;
   let suffix = 1;
   while (takenSet.has(slug)) {
-    slug = `${baseSlug}-${suffix++}`;
+    const suffixLabel = String(suffix++);
+    const maxBaseLen = MAX_APP_SLUG_LENGTH - suffixLabel.length - 1;
+    const truncatedBase =
+      baseSlug.length > maxBaseLen ? baseSlug.slice(0, maxBaseLen) : baseSlug;
+    slug = `${truncatedBase}-${suffixLabel}`;
   }
   return slug;
 }

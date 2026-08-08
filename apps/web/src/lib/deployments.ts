@@ -1,5 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import type { Deployment as DokployDeployment } from "@hostingit/dokploy-client";
+import type { DokployClient } from "@hostingit/dokploy-client";
 import { db } from "@/db";
 import { deployments } from "@/db/schema";
 
@@ -50,6 +51,31 @@ export function toDeploymentListItem(d: DokployDeployment): DeploymentListItem {
   };
 }
 
+export function deploymentStatusForBadge(
+  status: LocalDeploymentStatus
+): string {
+  switch (status) {
+    case "success":
+      return "success";
+    case "failed":
+      return "failed";
+    case "running":
+      return "deploying";
+    default:
+      return status;
+  }
+}
+
+/** Pull Dokploy deployment history into the local table (single source of truth). */
+export async function syncDeploymentsFromDokploy(
+  dokploy: DokployClient,
+  appId: string,
+  dokployAppId: string
+): Promise<void> {
+  const remote = await dokploy.listDeployments(dokployAppId);
+  await syncLocalDeployments(appId, remote);
+}
+
 /** Upsert local deployment rows keyed by Dokploy deployment id. */
 export async function syncLocalDeployments(
   appId: string,
@@ -92,5 +118,14 @@ export async function syncLocalDeployments(
         finishedAt,
       });
     }
+  }
+
+  // Remove legacy stub rows created before Dokploy ids were linked.
+  if (remote.some((d) => d.deploymentId)) {
+    await db
+      .delete(deployments)
+      .where(
+        and(eq(deployments.appId, appId), isNull(deployments.dokployDeploymentId))
+      );
   }
 }

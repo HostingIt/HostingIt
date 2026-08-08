@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { apps, deployments, users } from "@/db/schema";
+import { apps, users } from "@/db/schema";
 import { verifyGithubWebhookSignature } from "@/lib/github-app";
 import { syncDokployGitSource } from "@/lib/deploy-git";
 import { getDokployClient } from "@/lib/dokploy";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
+import { syncDeploymentsFromDokploy } from "@/lib/deployments";
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
@@ -90,10 +91,11 @@ export async function POST(request: Request) {
             .update(apps)
             .set({ status: "deploying", updatedAt: new Date() })
             .where(eq(apps.id, row.app.id));
-          await db.insert(deployments).values({
-            appId: row.app.id,
-            status: "running",
-          });
+          await syncDeploymentsFromDokploy(
+            dokploy,
+            row.app.id,
+            row.app.dokployAppId
+          );
         } catch (error) {
           console.error("Webhook redeploy failed:", row.app.id, error);
         }

@@ -52,12 +52,12 @@ export default function AppsDocsPage() {
       </p>
       <ul>
         <li>
-          <strong>Free</strong> — deploy one of them (usually the API or the
+          <strong>Free</strong>: deploy one of them (usually the API or the
           full-stack package you care about most). Host the other elsewhere, or
           combine into a single Dockerfile.
         </li>
         <li>
-          <strong>Pro</strong> — create two HostingIt apps from the same repo
+          <strong>Pro</strong>: create two HostingIt apps from the same repo
           (different root directories), then wire them with environment
           variables (for example the frontend&apos;s{" "}
           <code>API_URL</code> pointing at the backend URL).

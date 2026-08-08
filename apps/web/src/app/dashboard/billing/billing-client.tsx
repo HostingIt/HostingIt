@@ -75,7 +75,7 @@ export function BillingClient({
 
             {plan === "free" && proComingSoon && (
               <div className="rounded-md border border-border bg-surface p-4">
-                <p className="font-medium text-ink">Pro — coming soon</p>
+                <p className="font-medium text-ink">Pro: coming soon</p>
                 <p className="mt-1 text-sm text-muted">
                   Paid upgrades and payment verification are not open yet. Free
                   stays available; we&apos;ll announce Pro when billing is ready.
@@ -103,7 +103,7 @@ export function BillingClient({
             {initialRequests.length === 0 ? (
               <p className="text-sm text-muted">
                 {proComingSoon
-                  ? "No payments yet — upgrades are coming soon."
+                  ? "No payments yet: upgrades are coming soon."
                   : "No payment requests yet."}
               </p>
             ) : (

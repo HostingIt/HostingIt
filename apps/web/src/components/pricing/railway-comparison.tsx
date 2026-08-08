@@ -11,7 +11,7 @@ export function RailwayComparison() {
           Railway is great when you want elastic, usage-metered infra. HostingIt
           is for indie devs who want a{" "}
           <strong className="font-medium text-ink">fixed monthly bill</strong>{" "}
-          and simple Docker deploys — no RAM/CPU calculator required.
+          and simple Docker deploys: no RAM/CPU calculator required.
         </p>
       </div>
 

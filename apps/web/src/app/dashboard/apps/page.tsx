@@ -11,7 +11,7 @@ import { getPlanConfig, normalizePlan } from "@/lib/plans";
 import { getAppPublicUrl } from "@/lib/dokploy";
 
 function timeAgo(date: Date | null): string {
-  if (!date) return "—";
+  if (!date) return "N/A";
   const sec = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
   if (sec < 60) return `${sec}s ago`;
   const m = Math.floor(sec / 60);

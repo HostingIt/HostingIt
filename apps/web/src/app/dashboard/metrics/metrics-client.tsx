@@ -81,7 +81,7 @@ export function MetricsClient() {
                 Peak CPU (all apps)
               </p>
               <p className="mt-1 font-display text-2xl font-bold text-ink">
-                {peakCpu > 0 ? `${peakCpu.toFixed(1)}%` : "—"}
+                {peakCpu > 0 ? `${peakCpu.toFixed(1)}%` : "N/A"}
               </p>
             </CardContent>
           </Card>
@@ -91,7 +91,7 @@ export function MetricsClient() {
                 Peak memory (all apps)
               </p>
               <p className="mt-1 font-display text-2xl font-bold text-ink">
-                {peakMem > 0 ? `${peakMem.toFixed(1)}%` : "—"}
+                {peakMem > 0 ? `${peakMem.toFixed(1)}%` : "N/A"}
               </p>
             </CardContent>
           </Card>

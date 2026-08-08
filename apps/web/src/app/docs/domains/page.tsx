@@ -27,7 +27,7 @@ export default function DomainsDocsPage() {
           Create a <strong>CNAME</strong> (or the record we show) pointing at
           your app&apos;s HostingIt hostname.
         </li>
-        <li>Wait for DNS to propagate — SSL is issued automatically.</li>
+        <li>Wait for DNS to propagate: SSL is issued automatically.</li>
       </ol>
       <p>
         Free plan stays on the shared subdomain. Upgrade anytime from{" "}

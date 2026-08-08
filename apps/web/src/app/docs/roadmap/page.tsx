@@ -5,7 +5,7 @@ export default function RoadmapPage() {
   return (
     <DocsArticle
       title="Roadmap"
-      description="Where HostingIt is headed — Infra capacity and multi-node scaling."
+      description="Where HostingIt is headed: Infra capacity and multi-node scaling."
     >
       <h2>How you run on HostingIt</h2>
       <table>
@@ -31,7 +31,7 @@ export default function RoadmapPage() {
       </table>
       <p>
         You always use the same HostingIt panel. Provisioning stays behind the
-        scenes — you deploy apps, we run the infrastructure.
+        scenes: you deploy apps, we run the infrastructure.
       </p>
 
       <h2>HostingIt Infra</h2>
@@ -48,15 +48,15 @@ export default function RoadmapPage() {
       <h2>Multi-node scaling</h2>
       <ol>
         <li>
-          <strong>Multi-node Infra</strong> — several hosts; scheduler picks by
+          <strong>Multi-node Infra</strong>: several hosts; scheduler picks by
           plan and load
         </li>
         <li>
-          <strong>Central routing</strong> — one domain front door; each app
+          <strong>Central routing</strong>: one domain front door; each app
           mapped to its host
         </li>
         <li>
-          <strong>Regions</strong> — EU, US, APAC where it makes sense
+          <strong>Regions</strong>: EU, US, APAC where it makes sense
         </li>
       </ol>
 

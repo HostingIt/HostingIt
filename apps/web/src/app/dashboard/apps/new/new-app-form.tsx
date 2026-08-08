@@ -17,6 +17,7 @@ import {
 import { DeployTargetPicker } from "@/components/apps/deploy-target-picker";
 import type { GithubRepo } from "@/lib/github-repos";
 import type { DeployTarget, RepoAnalyzeResult } from "@/lib/repo-analyze";
+import { isValidAppNameForSlug } from "@/lib/utils";
 
 interface NewAppFormProps {
   repos: GithubRepo[];
@@ -112,6 +113,13 @@ export function NewAppForm({ repos }: NewAppFormProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedRepo) return;
+
+    if (!isValidAppNameForSlug(name)) {
+      setError(
+        "App name must include at least one letter or number (a-z, 0-9)"
+      );
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -249,8 +257,8 @@ export function NewAppForm({ repos }: NewAppFormProps) {
               analysis &&
               analysis.targets.length === 0 && (
                 <p className="text-sm text-muted">
-                  No clear app root detected. We&apos;ll use the repository root —
-                  open advanced options to set a subdirectory if needed.
+                  No clear app root detected. We&apos;ll use the repository root.
+                  Open advanced options to set a subdirectory if needed.
                 </p>
               )}
           </FormSection>
@@ -345,7 +353,7 @@ export function NewAppForm({ repos }: NewAppFormProps) {
 
               <FormSection
                 title="Build secrets"
-                description="Tokens used only during build — not baked into the image."
+                description="Tokens used only during build: not baked into the image."
               >
                 <EnvVarEditor
                   rows={buildSecrets}

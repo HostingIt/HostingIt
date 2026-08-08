@@ -14,7 +14,7 @@ export default function DocsPage() {
       <p>
         HostingIt is managed Docker hosting for indie developers. Connect a
         GitHub repository, pick what to deploy, and we give you a subdomain with
-        SSL — flat pricing, no cloud console maze.
+        SSL: flat pricing, no cloud console maze.
       </p>
       <p>
         It is best-effort hosting for hobby projects and small apps. It is not a
@@ -24,23 +24,23 @@ export default function DocsPage() {
       <h2>Start here</h2>
       <ul>
         <li>
-          <Link href="/docs/getting-started">Getting started</Link> — first
+          <Link href="/docs/getting-started">Getting started</Link>: first
           deploy in a few minutes
         </li>
         <li>
-          <Link href="/docs/apps">Apps &amp; limits</Link> — what an app is, Free
+          <Link href="/docs/apps">Apps &amp; limits</Link>: what an app is, Free
           vs Pro, monorepos
         </li>
         <li>
-          <Link href="/docs/deploys">Builds &amp; deploys</Link> — Dockerfile,
+          <Link href="/docs/deploys">Builds &amp; deploys</Link>: Dockerfile,
           Nixpacks, root directory, stages
         </li>
         <li>
-          <Link href="/docs/variables">Variables &amp; secrets</Link> — runtime
+          <Link href="/docs/variables">Variables &amp; secrets</Link>: runtime
           env and build secrets
         </li>
         <li>
-          <Link href="/docs/domains">Domains</Link> — free subdomain and custom
+          <Link href="/docs/domains">Domains</Link>: free subdomain and custom
           domains on Pro
         </li>
       </ul>
@@ -55,7 +55,7 @@ export default function DocsPage() {
         <p>
           <strong>Tip.</strong> Each HostingIt app runs one deployable unit (one
           root directory / one container). Frontend and backend folders in the
-          same repo are two apps — see{" "}
+          same repo are two apps: see{" "}
           <Link href="/docs/apps">Apps &amp; limits</Link>.
         </p>
       </div>

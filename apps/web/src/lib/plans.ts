@@ -122,8 +122,8 @@ export const RAILWAY_COMPARISON: ComparisonRow[] = [
   },
   {
     label: "Billing model",
-    hostingitFree: "Flat — no meter",
-    hostingitPro: "Flat — no meter",
+    hostingitFree: "Flat, no meter",
+    hostingitPro: "Flat, no meter",
     railwayFree: "Usage-based (RAM, CPU, egress)",
     railwayHobby: "Usage-based (RAM, CPU, egress)",
   },

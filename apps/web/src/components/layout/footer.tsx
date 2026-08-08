@@ -8,8 +8,8 @@ export function Footer() {
         <div>
           <BrandLogo />
           <p className="mt-2 max-w-sm text-sm text-muted">
-            Managed Docker hosting for indie developers. Best-effort — not for
-            mission-critical production.
+            Managed Docker hosting for indie developers. Best-effort hosting, not
+            for mission-critical production.
           </p>
         </div>
         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">

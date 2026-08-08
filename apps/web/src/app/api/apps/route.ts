@@ -3,7 +3,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 import { db } from "@/db";
-import { users, apps, deployments } from "@/db/schema";
+import { users, apps } from "@/db/schema";
 import {
   getDokployClient,
   getAppPublicUrl,
@@ -14,6 +14,7 @@ import { syncDokployGitSource } from "@/lib/deploy-git";
 import { ensureUserDokployEnvironment } from "@/lib/dokploy-user";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
 import { toClientError } from "@/lib/safe-error";
+import { InvalidAppSlugError, isValidAppNameForSlug } from "@/lib/utils";
 import {
   AppPlanLimitError,
   cleanupDokployProvision,
@@ -21,9 +22,17 @@ import {
   reserveAppSlot,
   type DokployProvisionResources,
 } from "@/lib/app-create-guard";
+import { syncDeploymentsFromDokploy } from "@/lib/deployments";
 
 const createAppSchema = z.object({
-  name: z.string().min(1).max(63),
+  name: z
+    .string()
+    .min(1)
+    .max(63)
+    .refine(isValidAppNameForSlug, {
+      message:
+        "App name must include at least one letter or number (a-z, 0-9)",
+    }),
   githubOwner: z.string().min(1),
   githubRepo: z.string().min(1),
   githubBranch: z.string().min(1).default("main"),
@@ -240,10 +249,7 @@ export async function POST(request: Request) {
     reservedAppId = null;
 
     if (deployImmediately) {
-      await db.insert(deployments).values({
-        appId: app.id,
-        status: "running",
-      });
+      await syncDeploymentsFromDokploy(dokploy, app.id, applicationId);
     }
 
     return NextResponse.json({
@@ -253,6 +259,10 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof AppPlanLimitError) {
       return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+
+    if (error instanceof InvalidAppSlugError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     console.error("Create app error:", error);

@@ -11,7 +11,7 @@ export default function DeploysDocsPage() {
       <p>
         The root directory is the folder HostingIt builds from. For a single-app
         repo, leave it as <code>/</code>. For monorepos, set it to the service
-        folder — for example <code>/backend</code> or <code>/frontend</code>.
+        folder: for example <code>/backend</code> or <code>/frontend</code>.
       </p>
       <p>
         Change it anytime under the app&apos;s <strong>Settings</strong> tab,

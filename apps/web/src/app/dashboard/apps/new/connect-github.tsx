@@ -24,7 +24,7 @@ export function ConnectGithubPrompt({ appConfigured }: ConnectGithubPromptProps)
             Install GitHub App
           </CardTitle>
           <CardDescription>
-            HostingIt needs permission to clone the repositories you choose —
+            HostingIt needs permission to clone the repositories you choose,
             same model as Railway or Vercel. Install the GitHub App, then pick
             which repos to grant.
           </CardDescription>

@@ -30,7 +30,7 @@ export function getDeployHints(
   ) {
     const altStep =
       alternatives.length > 0
-        ? `Try deploying ${alternatives.map((p) => `\`${p}\``).join(" or ")} instead — open Settings, set Root directory, Save & redeploy (or create a second app).`
+        ? `Try deploying ${alternatives.map((p) => `\`${p}\``).join(" or ")} instead. Open Settings, set Root directory, Save & redeploy (or create a second app).`
         : "If your code lives in a subfolder (e.g. frontend/, backend/), open Settings and set Root directory to that folder.";
 
     const dockerStep =
@@ -42,7 +42,7 @@ export function getDeployHints(
       id: "nixpacks-no-plan",
       title: "Auto-detect could not figure out how to build this repo",
       steps: [
-        "Each HostingIt app runs one container — not a full docker-compose stack.",
+        "Each HostingIt app runs one container, not a full docker-compose stack.",
         altStep,
         dockerStep,
         "For monorepos, pick one folder per HostingIt app (Free allows one app; Pro can run several).",
@@ -57,7 +57,7 @@ export function getDeployHints(
   ) {
     const pathStep =
       dockerfiles.length > 0
-        ? `Scan found these paths — try one in Settings → Dockerfile path: ${dockerfiles.map((p) => `\`${p}\``).join(", ")}.`
+        ? `Scan found these paths. Try one in Settings → Dockerfile path: ${dockerfiles.map((p) => `\`${p}\``).join(", ")}.`
         : "In Settings → Build, set Dockerfile path (e.g. Dockerfile, Dockerfile.prod, or docker/Dockerfile).";
 
     hints.push({
@@ -79,7 +79,7 @@ export function getDeployHints(
       title: "docker-compose is not run as a multi-app stack",
       steps: [
         "Choose one folder (frontend or backend) as Root directory for this HostingIt app.",
-        "Run databases (Postgres, Redis) elsewhere — not via compose on Free.",
+        "Run databases (Postgres, Redis) elsewhere, not via compose on Free.",
         "On Pro, create a second HostingIt app for the other folder.",
       ],
     });

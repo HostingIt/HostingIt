@@ -68,7 +68,7 @@ export function MetricChart({
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <span className="text-sm font-medium text-muted">{title}</span>
         <span className="font-mono text-sm font-semibold text-ink">
-          {latest !== null ? `${latest.toFixed(1)}${unit}` : "—"}
+          {latest !== null ? `${latest.toFixed(1)}${unit}` : "N/A"}
         </span>
       </div>
       {rows.length > 1 ? (
@@ -125,7 +125,7 @@ export function MetricChart({
           </div>
           {!compact && (
             <p className="mt-2 text-right font-mono text-[10px] text-muted">
-              peak {peak !== null ? peak.toFixed(1) : "—"}
+              peak {peak !== null ? peak.toFixed(1) : "N/A"}
               {unit}
             </p>
           )}

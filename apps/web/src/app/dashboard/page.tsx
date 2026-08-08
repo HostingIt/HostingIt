@@ -9,9 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { getPlanConfig, normalizePlan } from "@/lib/plans";
 import { getAppPublicUrl } from "@/lib/dokploy";
+import { deploymentStatusForBadge } from "@/lib/deployments";
 
 function timeAgo(date: Date | null): string {
-  if (!date) return "—";
+  if (!date) return "N/A";
   const sec = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
   if (sec < 60) return `${sec}s ago`;
   const m = Math.floor(sec / 60);
@@ -185,7 +186,7 @@ export default async function DashboardOverviewPage() {
                         Deployment · {timeAgo(d.startedAt)}
                       </p>
                     </div>
-                    <Badge status={d.status === "success" ? "running" : d.status === "failed" ? "error" : d.status} />
+                    <Badge status={deploymentStatusForBadge(d.status)} />
                   </Link>
                 );
               })}
@@ -196,7 +197,7 @@ export default async function DashboardOverviewPage() {
 
       {stoppedCount > 0 && (
         <p className="text-sm text-muted">
-          {stoppedCount} app{stoppedCount === 1 ? "" : "s"} stopped — open Apps
+          {stoppedCount} app{stoppedCount === 1 ? "" : "s"} stopped. Open Apps
           to start or redeploy.
         </p>
       )}

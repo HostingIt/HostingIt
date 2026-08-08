@@ -8,7 +8,7 @@ export default function HomePage() {
   const exampleHost = getAppHostname("api");
   return (
     <div>
-      {/* Hero — one composition: brand, headline, support, CTAs, visual plane */}
+      {/* Hero: one composition: brand, headline, support, CTAs, visual plane */}
       <section className="hero-plane relative min-h-[calc(100vh-4rem)] overflow-hidden">
         <div className="hero-grid absolute inset-0" aria-hidden />
 
@@ -39,7 +39,7 @@ export default function HomePage() {
               Deploy Docker apps from GitHub in minutes.
             </h1>
             <p className="animate-fade-up-delay-2 mt-4 max-w-lg text-base leading-relaxed text-muted sm:text-lg">
-              Connect a repo, get a live URL with SSL — flat pricing, no cloud
+              Connect a repo, get a live URL with SSL: flat pricing, no cloud
               maze.
             </p>
             <div className="animate-fade-up-delay-2 mt-8 flex flex-wrap gap-3">
@@ -60,7 +60,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Dominant visual — terminal deploy scene as atmospheric plane */}
+          {/* Dominant visual: terminal deploy scene as atmospheric plane */}
           <div
             className="animate-fade-in animate-drift pointer-events-none absolute bottom-8 right-4 hidden w-[min(440px,42vw)] lg:block"
             aria-hidden
@@ -86,7 +86,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* How it works — one job */}
+      {/* How it works: one job */}
       <section className="border-t border-border bg-surface py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-4">
           <h2 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
@@ -111,7 +111,7 @@ export default function HomePage() {
               {
                 step: "03",
                 title: "Go live",
-                desc: "Get a subdomain with SSL — or attach your domain on Pro.",
+                desc: "Get a subdomain with SSL, or attach your domain on Pro.",
               },
             ].map((item) => (
               <li key={item.step} className="relative">
@@ -130,14 +130,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Who it's for — one job */}
+      {/* Who it's for: one job */}
       <section className="border-t border-border py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-4">
           <h2 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
             Built for indie builders
           </h2>
           <p className="mt-3 max-w-xl text-muted">
-            Hobby apps and side projects — not mission-critical production.
+            Hobby apps and side projects, not mission-critical production.
           </p>
 
           <div className="mt-14 grid gap-y-10 sm:grid-cols-3 sm:gap-x-10">
@@ -152,7 +152,7 @@ export default function HomePage() {
               },
               {
                 title: "Predictable bill",
-                desc: "Flat monthly plans — no RAM meters or egress surprises.",
+                desc: "Flat monthly plans: no RAM meters or egress surprises.",
               },
             ].map((item) => (
               <div key={item.title}>
@@ -202,8 +202,8 @@ export default function HomePage() {
             Ship something this weekend
           </h2>
           <p className="mx-auto mt-3 max-w-md text-muted">
-            Start on Free — one deployable app, subdomain, SSL. Pro upgrades
-            coming soon.
+            Start on Free with one deployable app, subdomain, and SSL. Pro
+            upgrades coming soon.
           </p>
           <div className="mt-8">
             <Link href="/signup">
