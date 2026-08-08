@@ -89,6 +89,24 @@ function providerColumn(provider: OAuthProvider) {
   return provider === "github" ? users.githubId : users.googleId;
 }
 
+/** Promote ADMIN_EMAIL match to admin even if the account was created earlier. */
+async function ensureAdminBootstrap(user: User): Promise<User> {
+  const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
+  if (!adminEmail || user.email.toLowerCase() !== adminEmail) {
+    return user;
+  }
+  if (user.role === "admin") {
+    return user;
+  }
+
+  await db
+    .update(users)
+    .set({ role: "admin", updatedAt: new Date() })
+    .where(eq(users.id, user.id));
+
+  return { ...user, role: "admin" };
+}
+
 async function clearProviderId(
   provider: OAuthProvider,
   providerId: string,
@@ -181,7 +199,9 @@ export async function handleOAuthUser(
     if (byEmail.accountStatus === "suspended") {
       throw new Error("ACCOUNT_SUSPENDED");
     }
-    return attachProvider(byEmail.id, provider, providerId, name);
+    return ensureAdminBootstrap(
+      await attachProvider(byEmail.id, provider, providerId, name)
+    );
   }
 
   if (byProvider) {
@@ -209,7 +229,9 @@ export async function handleOAuthUser(
           accountPriority(emailTaken) >= accountPriority(byProvider)
             ? emailTaken
             : byProvider;
-        return attachProvider(keep.id, provider, providerId, name);
+        return ensureAdminBootstrap(
+          await attachProvider(keep.id, provider, providerId, name)
+        );
       }
       await db
         .update(users)
@@ -217,7 +239,9 @@ export async function handleOAuthUser(
         .where(eq(users.id, byProvider.id));
     }
 
-    return attachProvider(byProvider.id, provider, providerId, name);
+    return ensureAdminBootstrap(
+      await attachProvider(byProvider.id, provider, providerId, name)
+    );
   }
 
   const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
@@ -228,7 +252,7 @@ export async function handleOAuthUser(
       email,
       name,
       emailVerified: true,
-      role: adminEmail === email ? "admin" : "user",
+      role: adminEmail === email.toLowerCase() ? "admin" : "user",
       githubId: provider === "github" ? providerId : null,
       githubAccessToken: null,
       googleId: provider === "google" ? providerId : null,

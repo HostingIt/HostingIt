@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { ChevronDown, CreditCard, LogOut, Settings } from "lucide-react";
+import { ChevronDown, CreditCard, LogOut, Settings, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
@@ -29,6 +29,9 @@ function isActive(pathname: string, href: string, exact?: boolean) {
 }
 
 export function UserMenu() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "admin";
+
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
@@ -43,6 +46,17 @@ export function UserMenu() {
           sideOffset={8}
           className="z-50 min-w-[10rem] rounded-md border border-border bg-surface p-1 shadow-lg"
         >
+          {isAdmin && (
+            <DropdownMenu.Item asChild>
+              <Link
+                href="/admin/users"
+                className="flex cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-sm text-ink outline-none hover:bg-surface-2"
+              >
+                <Shield className="h-4 w-4 text-muted" />
+                Admin
+              </Link>
+            </DropdownMenu.Item>
+          )}
           <DropdownMenu.Item asChild>
             <Link
               href="/dashboard/billing"
