@@ -59,16 +59,17 @@ export default auth(async (req) => {
     return NextResponse.next();
   }
 
-  // JWT lags after enroll/verify. A valid MFA stamp means the user already
-  // completed TOTP — treat as enrolled + verified even if the JWT is stale.
+  // JWT lags after enroll/verify. A valid MFA stamp only proves verification
+  // for an already-enrolled user — never invent enrollment from the cookie alone.
   const stampOk =
     !!session.user.id &&
+    Boolean(session.user.mfaEnrolled) &&
     (await verifyMfaStamp(
       req.cookies.get(MFA_STAMP_COOKIE)?.value,
       session.user.id
     ));
 
-  const mfaEnrolled = Boolean(session.user.mfaEnrolled) || stampOk;
+  const mfaEnrolled = Boolean(session.user.mfaEnrolled);
   const mfaVerified = Boolean(session.user.mfaVerified) || stampOk;
 
   if (!mfaEnrolled) {

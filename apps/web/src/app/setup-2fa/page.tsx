@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,11 +17,13 @@ export default function Setup2FAPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const loadedForUserRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (status === "loading") return;
 
-    if (!session?.user) {
-      window.location.href = "/login";
+    // Wait for session; do not bounce to /login during brief auth flickers.
+    if (status !== "authenticated" || !session?.user?.id) {
       return;
     }
 
@@ -36,13 +38,16 @@ export default function Setup2FAPage() {
     }
 
     const userId = session.user.id;
+    if (loadedForUserRef.current === userId && qrDataUrl) {
+      setFetching(false);
+      return;
+    }
+
     let cancelled = false;
 
     async function loadEnrollment() {
       setFetching(true);
       setError("");
-      setQrDataUrl(null);
-      setManualKey(null);
 
       try {
         const res = await fetch("/api/auth/2fa/enroll");
@@ -59,6 +64,7 @@ export default function Setup2FAPage() {
         }
 
         if (!cancelled) {
+          loadedForUserRef.current = userId;
           setQrDataUrl(data.qrDataUrl);
           setManualKey(data.manualKey ?? null);
         }
@@ -80,7 +86,18 @@ export default function Setup2FAPage() {
     return () => {
       cancelled = true;
     };
-  }, [session?.user?.id, status, update]);
+    // Intentionally omit `update` / full session — unstable refs caused cancel loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id, session?.user?.mfaEnrolled, session?.user?.mfaVerified, status]);
+
+  // Hard fallback if session never becomes authenticated (e.g. expired cookie).
+  useEffect(() => {
+    if (status !== "unauthenticated") return;
+    const t = setTimeout(() => {
+      window.location.href = "/login";
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [status]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -106,7 +123,6 @@ export default function Setup2FAPage() {
       return;
     }
 
-    // Bake signed MFA proof into the JWT (cookie alone is unreliable behind proxies)
     if (typeof data.mfaProof === "string") {
       await update({ mfaProof: data.mfaProof });
     } else {
@@ -145,7 +161,7 @@ export default function Setup2FAPage() {
           <li className="rounded-sm bg-background px-2 py-1">3 · Done</li>
         </ol>
 
-        {fetching ? (
+        {status === "loading" || fetching ? (
           <div className="mt-8 space-y-4">
             <div className="skeleton mx-auto h-48 w-48 rounded-md" />
             <div className="skeleton skeleton-text mx-auto h-4 w-40" />

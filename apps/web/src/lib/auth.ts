@@ -87,6 +87,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
     },
     async jwt({ token, account, profile, trigger, session }) {
+      // OAuth sign-in / provider link — safe to hit DB (Node runtime).
       if (account && profile) {
         const previousUserId = token.id as string | undefined;
         const previousMfaVerified = await sessionIsMfaVerified(
@@ -114,53 +115,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           userId = dbUser.id;
         }
 
-        // Always re-read DB so MFA flags match the canonical email account
         const dbUser = userId ? await getUserById(userId) : null;
 
-        if (dbUser) {
-          const sameUser = previousUserId === dbUser.id;
-          token.id = dbUser.id;
-          token.role = dbUser.role;
-          token.plan = dbUser.plan;
-          token.accountStatus = dbUser.accountStatus;
-          // This is what sends enrolled users to /login/2fa (not /setup-2fa)
-          token.mfaEnrolled = !!(dbUser.totpSecret && dbUser.totpEnabled);
+        if (!dbUser) {
+          // Do not mint a half-baked session.
+          return {};
+        }
 
-          if (isLinking || (sameUser && previousMfaVerified)) {
-            token.mfaVerified = true;
-          } else {
-            // Fresh login (e.g. Google account, then GitHub with same email)
-            token.mfaVerified = false;
-            try {
-              await clearMfaStampCookie();
-            } catch {
-              // ignore
-            }
+        const sameUser = previousUserId === dbUser.id;
+        token.id = dbUser.id;
+        token.role = dbUser.role;
+        token.plan = dbUser.plan;
+        token.accountStatus = dbUser.accountStatus;
+        token.mfaEnrolled = !!(dbUser.totpSecret && dbUser.totpEnabled);
+
+        if (isLinking || (sameUser && previousMfaVerified)) {
+          token.mfaVerified = true;
+        } else {
+          // Fresh login — require TOTP again (or enrollment).
+          token.mfaVerified = false;
+          try {
+            await clearMfaStampCookie();
+          } catch {
+            // ignore
           }
         }
       }
 
+      // Client session.update() — Node runtime; sync flags from DB + mfaProof.
       if (trigger === "update" && token.id) {
-        const dbUser = await getUserById(token.id as string);
-        if (dbUser) {
-          token.mfaEnrolled = !!(dbUser.totpSecret && dbUser.totpEnabled);
-          token.role = dbUser.role;
-          token.plan = dbUser.plan;
-          token.accountStatus = dbUser.accountStatus;
-        }
-
-        const proof =
-          session &&
-          typeof (session as { mfaProof?: unknown }).mfaProof === "string"
-            ? (session as { mfaProof: string }).mfaProof
-            : undefined;
-
-        if (proof && (await verifyMfaStamp(proof, token.id as string))) {
-          token.mfaVerified = true;
-        }
-      }
-
-      if (token.id) {
         const dbUser = await getUserById(token.id as string);
         if (!dbUser) {
           return {};
@@ -171,15 +154,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.accountStatus = dbUser.accountStatus;
         token.mfaEnrolled = !!(dbUser.totpSecret && dbUser.totpEnabled);
 
+        const proof =
+          session &&
+          typeof (session as { mfaProof?: unknown }).mfaProof === "string"
+            ? (session as { mfaProof: string }).mfaProof
+            : undefined;
+
+        if (proof && (await verifyMfaStamp(proof, token.id as string))) {
+          token.mfaVerified = true;
+        } else if (!token.mfaEnrolled) {
+          token.mfaVerified = false;
+        }
+      }
+
+      // Lightweight path used by Edge middleware: cookie stamp only.
+      // Never hit the DB here — that wiped sessions after the prior fix.
+      if (token.id && token.mfaEnrolled) {
         try {
           const stamped = await readMfaStampVerified(token.id as string);
-          if (stamped && dbUser.totpEnabled) {
+          if (stamped) {
             token.mfaVerified = true;
-          } else if (!dbUser.totpEnabled) {
-            token.mfaVerified = false;
           }
         } catch {
-          // ignore
+          // ignore (e.g. cookies() unavailable)
         }
       }
 
@@ -187,12 +184,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (session.user) {
+        if (!token.id) {
+          // Invalid / cleared token — treat as logged out.
+          return { ...session, user: { ...session.user, id: undefined } };
+        }
         session.user.id = token.id as string;
         session.user.role = token.role as string;
         session.user.plan = token.plan as string;
         session.user.mfaEnrolled = Boolean(token.mfaEnrolled);
         session.user.mfaVerified = Boolean(token.mfaVerified);
-        session.user.accountStatus = (token.accountStatus as string) ?? "active";
+        session.user.accountStatus =
+          (token.accountStatus as string) ?? "active";
       }
       return session;
     },
