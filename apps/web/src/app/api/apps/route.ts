@@ -1,22 +1,26 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { eq, count, like } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { users, apps, deployments } from "@/db/schema";
 import {
   getDokployClient,
-  getAppHostname,
   getAppPublicUrl,
 } from "@/lib/dokploy";
-import { getPlanLimit } from "@/lib/plans";
-import { slugify } from "@/lib/utils";
 import { serializeEnvVars } from "@/lib/env-vars";
 import { envVarListSchema } from "@/lib/env-var-schema";
 import { syncDokployGitSource } from "@/lib/deploy-git";
 import { ensureUserDokployEnvironment } from "@/lib/dokploy-user";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
 import { toClientError } from "@/lib/safe-error";
+import {
+  AppPlanLimitError,
+  cleanupDokployProvision,
+  releaseAppSlot,
+  reserveAppSlot,
+  type DokployProvisionResources,
+} from "@/lib/app-create-guard";
 
 const createAppSchema = z.object({
   name: z.string().min(1).max(63),
@@ -63,6 +67,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  let reservedAppId: string | null = null;
+  const dokployResources: DokployProvisionResources = {};
+
   try {
     const body = await request.json();
     const parsed = createAppSchema.safeParse(body);
@@ -90,13 +97,11 @@ export async function POST(request: Request) {
       deployImmediately,
     } = parsed.data;
 
-    const [[user], [{ value: appCount }]] = await Promise.all([
-      db.select().from(users).where(eq(users.id, session.user.id)).limit(1),
-      db
-        .select({ value: count() })
-        .from(apps)
-        .where(eq(apps.userId, session.user.id)),
-    ]);
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -120,28 +125,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const limit = getPlanLimit(user.plan);
-    if (appCount >= limit) {
-      return NextResponse.json(
-        { error: `Plan limit reached (${limit} apps). Upgrade to deploy more.` },
-        { status: 403 }
-      );
-    }
-
-    const baseSlug = slugify(name);
-    const taken = await db
-      .select({ slug: apps.slug })
-      .from(apps)
-      .where(like(apps.slug, `${baseSlug}%`));
-    const takenSet = new Set(taken.map((row) => row.slug));
-    let slug = baseSlug;
-    let suffix = 1;
-    while (takenSet.has(slug)) {
-      slug = `${baseSlug}-${suffix++}`;
-    }
-
     const dokploy = getDokployClient();
-    const { projectId, environmentId } = await ensureUserDokployEnvironment(user);
+    const { projectId, environmentId } =
+      await ensureUserDokployEnvironment(user);
+
+    const { app: reservedApp, slug, subdomain } = await reserveAppSlot({
+      userId: user.id,
+      plan: user.plan,
+      name,
+      projectId,
+      githubOwner,
+      githubRepo,
+      githubBranch,
+    });
+    reservedAppId = reservedApp.id;
 
     const application = await dokploy.createApplication({
       name,
@@ -153,6 +150,7 @@ export async function POST(request: Request) {
       (application as { applicationId?: string }).applicationId ??
       (application as { id?: string }).id ??
       "";
+    dokployResources.applicationId = applicationId;
 
     await applyPlanResourceLimits(dokploy, applicationId, user.plan);
 
@@ -206,8 +204,6 @@ export async function POST(request: Request) {
       });
     }
 
-    const subdomain = getAppHostname(slug);
-
     const domain = await dokploy.createDomain({
       host: subdomain,
       applicationId,
@@ -217,6 +213,7 @@ export async function POST(request: Request) {
       (domain as { domainId?: string }).domainId ??
       (domain as { id?: string }).id ??
       null;
+    dokployResources.domainId = domainId;
 
     if (deployImmediately) {
       await dokploy.deploy({
@@ -226,22 +223,21 @@ export async function POST(request: Request) {
       });
     }
 
+    const nextStatus = deployImmediately ? "deploying" : "stopped";
+
     const [app] = await db
-      .insert(apps)
-      .values({
-        userId: user.id,
-        name,
-        slug,
-        dokployProjectId: projectId,
+      .update(apps)
+      .set({
         dokployAppId: applicationId,
         dokployDomainId: domainId,
-        githubOwner,
-        githubRepo,
-        githubBranch,
         subdomain,
-        status: deployImmediately ? "deploying" : "stopped",
+        status: nextStatus,
+        updatedAt: new Date(),
       })
+      .where(eq(apps.id, reservedApp.id))
       .returning();
+
+    reservedAppId = null;
 
     if (deployImmediately) {
       await db.insert(deployments).values({
@@ -255,11 +251,23 @@ export async function POST(request: Request) {
       url: getAppPublicUrl(app),
     });
   } catch (error) {
+    if (error instanceof AppPlanLimitError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+
     console.error("Create app error:", error);
+
+    if (reservedAppId) {
+      await releaseAppSlot(reservedAppId);
+    }
+
+    if (dokployResources.applicationId || dokployResources.domainId) {
+      await cleanupDokployProvision(getDokployClient(), dokployResources);
+    }
+
     return NextResponse.json(
       {
-        error:
-          toClientError(error, "Failed to create application"),
+        error: toClientError(error, "Failed to create application"),
       },
       { status: 500 }
     );
