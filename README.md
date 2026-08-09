@@ -54,7 +54,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ### Local subdomain testing (`fhusr-*.hostingit.online`)
 
-The panel runs on localhost, but **apps still deploy to your remote Dokploy** instance. Free apps get first-level hostnames like `fhusr-my-api.hostingit.online` (Cloudflare orange cloud + free Universal SSL compatible).
+The panel runs on localhost, but **apps still deploy to your remote Dokploy** instance. Free apps get unique first-level hostnames like `fhusr-my-api-a1b2c3d4e5f6.hostingit.online` (Cloudflare orange cloud + free Universal SSL compatible).
 
 1. In `apps/web/.env.local`:
    ```bash
@@ -66,7 +66,7 @@ The panel runs on localhost, but **apps still deploy to your remote Dokploy** in
    ```
 2. In Cloudflare for `hostingit.online`, add **`*`** → Dokploy VPS origin IP. **Proxied (orange cloud)** is fine.
 3. Restart the dev server after env changes (`npm run dev`).
-4. Create an app — live URL looks like `https://fhusr-my-api.hostingit.online`.
+4. Create an app — live URL looks like `https://fhusr-my-api-a1b2c3d4e5f6.hostingit.online`.
 
 Keep the apex (`@`) pointed at the **panel** server. More-specific records (e.g. `www`) override the wildcard.
 

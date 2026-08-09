@@ -7,6 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 /** Max slug length — keeps `fhusr-{slug}` within DNS label limits. */
 export const MAX_APP_SLUG_LENGTH = 48;
+export const UNIQUE_APP_SUFFIX_LENGTH = 12;
 
 /**
  * DNS-safe app slug: lowercase alphanumerics with internal hyphens;
@@ -45,6 +46,30 @@ export function slugifyAppName(name: string): string {
     throw new InvalidAppSlugError();
   }
   return slug;
+}
+
+/** Append a collision-resistant suffix while preserving DNS-safe slug rules. */
+export function appendUniqueSlugSuffix(baseSlug: string, suffix: string): string {
+  if (!isValidAppSlug(baseSlug)) {
+    throw new InvalidAppSlugError();
+  }
+
+  const normalizedSuffix = suffix
+    .replace(/[^a-z0-9]/gi, "")
+    .toLowerCase()
+    .slice(0, UNIQUE_APP_SUFFIX_LENGTH);
+  if (normalizedSuffix.length !== UNIQUE_APP_SUFFIX_LENGTH) {
+    throw new Error(
+      `Unique app suffix must contain at least ${UNIQUE_APP_SUFFIX_LENGTH} alphanumeric characters`
+    );
+  }
+
+  const maxBaseLength =
+    MAX_APP_SLUG_LENGTH - UNIQUE_APP_SUFFIX_LENGTH - 1;
+  const truncatedBase = baseSlug
+    .slice(0, maxBaseLength)
+    .replace(/-+$/, "");
+  return `${truncatedBase}-${normalizedSuffix}`;
 }
 
 /** Non-throwing check for API validation (e.g. Zod refine). */

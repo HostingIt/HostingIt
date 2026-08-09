@@ -183,7 +183,7 @@ export function NewAppForm({ repos }: NewAppFormProps) {
               required
             />
             <p className="text-xs text-muted">
-              Used for your URL: fhusr-{"{name}"}.hostingit.online
+              Used to generate a unique URL under fhusr-*.hostingit.online
             </p>
           </div>
 

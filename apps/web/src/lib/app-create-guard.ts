@@ -1,10 +1,10 @@
 import { randomUUID } from "crypto";
-import { eq, count, like, sql } from "drizzle-orm";
+import { eq, count, sql } from "drizzle-orm";
 import type { DokployClient } from "@hostingit/dokploy-client";
 import { db } from "@/db";
 import { apps } from "@/db/schema";
 import { getPlanLimit } from "@/lib/plans";
-import { slugifyAppName, MAX_APP_SLUG_LENGTH } from "@/lib/utils";
+import { appendUniqueSlugSuffix, slugifyAppName } from "@/lib/utils";
 import { getAppHostname } from "@/lib/dokploy";
 
 export class AppPlanLimitError extends Error {
@@ -23,27 +23,13 @@ export type DokployProvisionResources = {
   domainId?: string | null;
 };
 
-/** Pick a globally unique slug inside the user's creation lock. */
-async function allocateSlug(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-  name: string
-): Promise<string> {
+/**
+ * Allocate a fresh hostname for every app. Dokploy can retain stale Traefik
+ * routes after an application is deleted, so hostnames must never be reused.
+ */
+function allocateSlug(name: string): string {
   const baseSlug = slugifyAppName(name);
-  const taken = await tx
-    .select({ slug: apps.slug })
-    .from(apps)
-    .where(like(apps.slug, `${baseSlug}%`));
-  const takenSet = new Set(taken.map((row) => row.slug));
-  let slug = baseSlug;
-  let suffix = 1;
-  while (takenSet.has(slug)) {
-    const suffixLabel = String(suffix++);
-    const maxBaseLen = MAX_APP_SLUG_LENGTH - suffixLabel.length - 1;
-    const truncatedBase =
-      baseSlug.length > maxBaseLen ? baseSlug.slice(0, maxBaseLen) : baseSlug;
-    slug = `${truncatedBase}-${suffixLabel}`;
-  }
-  return slug;
+  return appendUniqueSlugSuffix(baseSlug, randomUUID());
 }
 
 /**
@@ -74,7 +60,7 @@ export async function reserveAppSlot(input: {
       throw new AppPlanLimitError(limit);
     }
 
-    const slug = await allocateSlug(tx, input.name);
+    const slug = allocateSlug(input.name);
     const subdomain = getAppHostname(slug);
 
     const placeholderAppId = `pending:${randomUUID()}`;

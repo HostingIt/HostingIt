@@ -5,7 +5,7 @@ import { PlanCardsSection } from "@/components/pricing/plan-cards-section";
 import { getAppHostname } from "@/lib/dokploy";
 
 export default function HomePage() {
-  const exampleHost = getAppHostname("api");
+  const exampleHost = getAppHostname("api-a1b2c3d4e5f6");
   return (
     <div>
       {/* Hero: one composition: brand, headline, support, CTAs, visual plane */}

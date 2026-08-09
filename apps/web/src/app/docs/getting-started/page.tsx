@@ -3,7 +3,7 @@ import { DocsArticle } from "@/components/docs/docs-article";
 import { getAppHostname } from "@/lib/dokploy";
 
 export default function GettingStartedPage() {
-  const exampleHost = getAppHostname("my-api");
+  const exampleHost = getAppHostname("my-api-a1b2c3d4e5f6");
 
   return (
     <DocsArticle

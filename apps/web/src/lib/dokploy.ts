@@ -16,19 +16,19 @@ export function getBaseDomain(): string {
 
 /**
  * Free-tier label prefix for first-level subdomains.
- * Produces fhusr-{slug}.hostingit.online (Cloudflare Universal SSL compatible).
+ * Produces fhusr-{slug}.hostingit.online; allocated slugs include a unique suffix.
  */
 export function getFreeSubdomainPrefix(): string {
   return process.env.NEXT_PUBLIC_FREE_SUBDOMAIN_PREFIX ?? "fhusr";
 }
 
-/** Leftmost label only, e.g. fhusr-my-api */
+/** Leftmost label only, e.g. fhusr-my-api-a1b2c3d4e5f6 */
 export function getFreeAppLabel(slug: string): string {
   const prefix = getFreeSubdomainPrefix();
   return `${prefix}-${slug}`;
 }
 
-/** Hostname only, e.g. fhusr-my-api.hostingit.online */
+/** Hostname only, e.g. fhusr-my-api-a1b2c3d4e5f6.hostingit.online */
 export function getAppHostname(slug: string): string {
   return `${getFreeAppLabel(slug)}.${getBaseDomain()}`;
 }
