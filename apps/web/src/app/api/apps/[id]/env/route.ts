@@ -7,6 +7,7 @@ import { apps } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
 import { getOwnedApp } from "@/lib/app-access";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
+import { ensureStaticDomainPort } from "@/lib/dokploy-domain";
 import { parseEnvString, serializeEnvVars } from "@/lib/env-vars";
 import { envVarListSchema } from "@/lib/env-var-schema";
 import { mergeEnvVarUpdates, toMaskedEnvResponse } from "@/lib/env-secrets";
@@ -103,6 +104,7 @@ export async function PUT(
     });
 
     if (parsed.data.redeploy) {
+      await ensureStaticDomainPort(dokploy, app, remote.buildType);
       await applyPlanResourceLimits(
         dokploy,
         app.dokployAppId,

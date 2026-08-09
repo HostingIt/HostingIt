@@ -132,8 +132,15 @@ export interface DeployInput {
 export interface CreateDomainInput {
   host: string;
   applicationId: string;
+  port?: number | null;
   https?: boolean;
   certificateType?: "letsencrypt" | "none";
+}
+
+export interface UpdateDomainInput {
+  domainId: string;
+  host: string;
+  port?: number | null;
 }
 
 export interface Domain {
@@ -448,11 +455,23 @@ export class DokployClient {
       body: JSON.stringify({
         host: input.host,
         applicationId: input.applicationId,
+        port: input.port ?? undefined,
         https: input.https ?? true,
         certificateType: input.certificateType ?? "letsencrypt",
       }),
     });
     return data;
+  }
+
+  async updateDomain(input: UpdateDomainInput): Promise<void> {
+    await this.request("/api/domain.update", {
+      method: "POST",
+      body: JSON.stringify({
+        domainId: input.domainId,
+        host: input.host,
+        port: input.port ?? undefined,
+      }),
+    });
   }
 
   async deleteDomain(domainId: string): Promise<void> {

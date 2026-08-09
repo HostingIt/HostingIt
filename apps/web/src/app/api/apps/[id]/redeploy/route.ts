@@ -6,6 +6,7 @@ import { apps, users } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
 import { syncDokployGitSource } from "@/lib/deploy-git";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
+import { ensureStaticDomainPort } from "@/lib/dokploy-domain";
 import { syncDeploymentsFromDokploy } from "@/lib/deployments";
 import { toClientError } from "@/lib/safe-error";
 
@@ -64,6 +65,7 @@ export async function POST(
       buildPath: remote.customGitBuildPath ?? remote.buildPath ?? "/",
     });
 
+    await ensureStaticDomainPort(dokploy, row.app, remote.buildType);
     await dokploy.redeploy(row.app.dokployAppId);
 
     await db

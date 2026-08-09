@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { apps } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
+import { STATIC_CONTAINER_PORT } from "@/lib/dokploy-domain";
 import { canUseCustomDomain } from "@/lib/plans";
 
 const HOSTNAME_RE =
@@ -57,9 +58,11 @@ export async function POST(
 
   try {
     const dokploy = getDokployClient();
+    const remote = await dokploy.getApplication(app.dokployAppId);
     const domain = await dokploy.createDomain({
       host: parsed.data.domain,
       applicationId: app.dokployAppId,
+      port: remote.buildType === "static" ? STATIC_CONTAINER_PORT : undefined,
     });
 
     await db

@@ -7,6 +7,7 @@ import { apps, users } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
 import { getOwnedApp } from "@/lib/app-access";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
+import { ensureStaticDomainPort } from "@/lib/dokploy-domain";
 import { syncDokployGitSource } from "@/lib/deploy-git";
 import { toClientError } from "@/lib/safe-error";
 
@@ -163,6 +164,10 @@ export async function PATCH(
     }
 
     if (data.redeploy) {
+      const buildType =
+        data.buildType ??
+        (await dokploy.getApplication(app.dokployAppId)).buildType;
+      await ensureStaticDomainPort(dokploy, app, buildType);
       await applyPlanResourceLimits(
         dokploy,
         app.dokployAppId,

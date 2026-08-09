@@ -6,6 +6,7 @@ import { verifyGithubWebhookSignature } from "@/lib/github-app";
 import { syncDokployGitSource } from "@/lib/deploy-git";
 import { getDokployClient } from "@/lib/dokploy";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
+import { ensureStaticDomainPort } from "@/lib/dokploy-domain";
 import { syncDeploymentsFromDokploy } from "@/lib/deployments";
 
 export async function POST(request: Request) {
@@ -86,6 +87,7 @@ export async function POST(request: Request) {
             branch: row.app.githubBranch,
             buildPath: remote.customGitBuildPath ?? remote.buildPath ?? "/",
           });
+          await ensureStaticDomainPort(dokploy, row.app, remote.buildType);
           await dokploy.redeploy(row.app.dokployAppId);
           await db
             .update(apps)
