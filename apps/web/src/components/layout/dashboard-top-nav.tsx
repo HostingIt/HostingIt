@@ -1,11 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ChevronDown, CreditCard, LogOut, Settings, Shield } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
 import { cn } from "@/lib/utils";
@@ -35,22 +35,22 @@ export function UserMenu() {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <Button variant="outline" size="sm" className="gap-1 border-border">
+        <button type="button" className="dash-account">
           Account
           <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-        </Button>
+        </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           align="end"
           sideOffset={8}
-          className="z-50 min-w-[10rem] rounded-md border border-border bg-surface p-1 shadow-lg"
+          className="z-50 min-w-[10rem] rounded-[14px] border border-border bg-surface p-1"
         >
           {isAdmin && (
             <DropdownMenu.Item asChild>
               <Link
                 href="/admin/users"
-                className="flex cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-sm text-ink outline-none hover:bg-surface-2"
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink outline-none hover:bg-surface-2"
               >
                 <Shield className="h-4 w-4 text-muted" />
                 Admin
@@ -60,7 +60,7 @@ export function UserMenu() {
           <DropdownMenu.Item asChild>
             <Link
               href="/dashboard/billing"
-              className="flex cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-sm text-ink outline-none hover:bg-surface-2"
+              className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink outline-none hover:bg-surface-2"
             >
               <CreditCard className="h-4 w-4 text-muted" />
               Billing
@@ -69,7 +69,7 @@ export function UserMenu() {
           <DropdownMenu.Item asChild>
             <Link
               href="/dashboard/settings"
-              className="flex cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-sm text-ink outline-none hover:bg-surface-2"
+              className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink outline-none hover:bg-surface-2"
             >
               <Settings className="h-4 w-4 text-muted" />
               Settings
@@ -77,7 +77,7 @@ export function UserMenu() {
           </DropdownMenu.Item>
           <DropdownMenu.Separator className="my-1 h-px bg-border" />
           <DropdownMenu.Item
-            className="flex cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-sm text-ink outline-none hover:bg-surface-2"
+            className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink outline-none hover:bg-surface-2"
             onSelect={() => signOut({ callbackUrl: "/" })}
           >
             <LogOut className="h-4 w-4 text-muted" />
@@ -91,68 +91,69 @@ export function UserMenu() {
 
 export function DashboardTopNav() {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 sm:px-8">
-        <BrandLogo href="/dashboard" size="sm" className="shrink-0" />
-
-        <nav className="hidden flex-1 items-center gap-1 md:flex">
+    <header className="home-nav">
+      <div className="home-wrap home-nav-inner">
+        <BrandLogo href="/dashboard" />
+        <nav className="home-nav-links" aria-label="Dashboard">
           {mainNav.map((item) => {
-            const active = isActive(pathname, item.href, "exact" in item && item.exact);
+            const active = isActive(
+              pathname,
+              item.href,
+              "exact" in item && item.exact
+            );
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={cn(
-                  "rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-accent/15 text-ink"
-                    : "text-muted hover:bg-background hover:text-ink"
-                )}
+                className={cn("home-nav-link", active && "is-active")}
               >
                 {item.label}
               </Link>
             );
           })}
         </nav>
-
-        <div className="ml-auto flex items-center gap-2">
-          <Link href="/dashboard/apps/new" className="hidden sm:block">
-            <Button size="sm" variant="accent" className="btn-glow">
-              New App
-            </Button>
+        <div className="home-nav-actions">
+          <Link href="/dashboard/apps/new" className="home-dash dash-new">
+            <span className="home-dash-full">New App</span>
+            <span className="home-dash-short">New</span>
           </Link>
-          <ThemeToggle />
+          <ThemeToggle className="home-theme-toggle" />
           <UserMenu />
+          <button
+            type="button"
+            className="home-menu-btn"
+            aria-expanded={open}
+            aria-controls="dash-mobile-nav"
+            onClick={() => setOpen((value) => !value)}
+          >
+            {open ? "Close" : "Menu"}
+          </button>
         </div>
       </div>
-
-      <nav className="flex gap-1 overflow-x-auto border-t border-border px-4 py-2 md:hidden">
-        {mainNav.map((item) => {
-          const active = isActive(pathname, item.href, "exact" in item && item.exact);
-          return (
+      {open ? (
+        <nav id="dash-mobile-nav" className="home-mobile-nav" aria-label="Mobile">
+          {mainNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={cn(
-                "whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium",
-                active
-                  ? "bg-accent/15 text-ink"
-                  : "text-muted hover:bg-background hover:text-ink"
-              )}
+              className="home-mobile-link"
+              onClick={() => setOpen(false)}
             >
               {item.label}
             </Link>
-          );
-        })}
-        <Link
-          href="/dashboard/apps/new"
-          className="whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium text-accent"
-        >
-          + New
-        </Link>
-      </nav>
+          ))}
+          <Link
+            href="/dashboard/apps/new"
+            className="home-mobile-link"
+            onClick={() => setOpen(false)}
+          >
+            New App
+          </Link>
+        </nav>
+      ) : null}
     </header>
   );
 }

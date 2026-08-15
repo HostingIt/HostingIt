@@ -1,18 +1,13 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { HomeShell } from "@/components/home/home-shell";
 
-/**
- * Marketing chrome (header + footer) for public pages only.
- * Dashboard and admin use their own full-viewport shells.
- */
 export function MarketingChrome({
-  header,
-  footer,
+  loggedIn,
   children,
 }: {
-  header: React.ReactNode;
-  footer: React.ReactNode;
+  loggedIn: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -23,11 +18,5 @@ export function MarketingChrome({
     return <>{children}</>;
   }
 
-  return (
-    <div className="flex min-h-screen flex-col">
-      {header}
-      <main className="flex-1">{children}</main>
-      {footer}
-    </div>
-  );
+  return <HomeShell loggedIn={loggedIn}>{children}</HomeShell>;
 }

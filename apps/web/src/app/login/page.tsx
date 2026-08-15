@@ -23,11 +23,12 @@ export default async function LoginPage({
         : null;
 
   return (
-    <div className="hero-plane relative flex min-h-[calc(100vh-4rem)] items-center justify-center overflow-hidden px-4 py-12">
-      <div className="hero-grid absolute inset-0 opacity-50" aria-hidden />
-      <Card className="relative w-full max-w-md border-border bg-surface/95 shadow-none">
+    <div className="auth-page">
+      <Card className="auth-card">
         <CardHeader>
-          <CardTitle className="font-display text-2xl">Welcome back</CardTitle>
+          <CardTitle className="text-2xl font-semibold tracking-tight">
+            Welcome back
+          </CardTitle>
           <CardDescription>Sign in with GitHub or Google</CardDescription>
         </CardHeader>
         <CardContent>

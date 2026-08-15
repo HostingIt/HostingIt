@@ -1,6 +1,6 @@
 export default function StatusPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-16">
+    <div className="site-wrap py-16">
       <h1 className="font-display text-4xl font-bold text-ink">System Status</h1>
       <p className="mt-4 text-muted">
         Best-effort hosting for hobby projects and small applications.

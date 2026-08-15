@@ -27,7 +27,7 @@ export function OAuthButtons({ callbackUrl = "/dashboard" }: OAuthButtonsProps) 
       >
         Continue with Google
       </Button>
-      <p className="pt-2 text-center text-xs text-zinc-500">
+      <p className="pt-2 text-center text-xs text-muted">
         By continuing, you agree to our{" "}
         <Link href="/terms" className="underline">
           Terms

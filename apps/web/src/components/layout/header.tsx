@@ -9,14 +9,14 @@ export async function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
+      <div className="site-wrap flex h-16 items-center justify-between">
         <BrandLogo priority />
-        <nav className="flex items-center gap-1 sm:gap-4">
+        <nav className="flex items-center gap-1 sm:gap-3">
           <Link
-            href="/pricing"
-            className="px-2 py-1 text-sm text-muted transition-colors hover:text-ink"
+            href="/about"
+            className="hidden px-2 py-1 text-sm text-muted transition-colors hover:text-ink sm:inline"
           >
-            Pricing
+            About
           </Link>
           <Link
             href="/docs"
@@ -33,7 +33,7 @@ export async function Header() {
             <>
               <Link
                 href="/login"
-                className="px-2 py-1 text-sm text-muted transition-colors hover:text-ink"
+                className="hidden px-2 py-1 text-sm text-muted transition-colors hover:text-ink sm:inline"
               >
                 Login
               </Link>

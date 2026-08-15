@@ -10,11 +10,10 @@ import { OAuthButtons } from "@/components/auth/oauth-buttons";
 
 export default function SignupPage() {
   return (
-    <div className="hero-plane relative flex min-h-[calc(100vh-4rem)] items-center justify-center overflow-hidden px-4 py-12">
-      <div className="hero-grid absolute inset-0 opacity-50" aria-hidden />
-      <Card className="relative w-full max-w-md border-border bg-surface/95 shadow-none">
+    <div className="auth-page">
+      <Card className="auth-card">
         <CardHeader>
-          <CardTitle className="font-display text-2xl">
+          <CardTitle className="text-2xl font-semibold tracking-tight">
             Create your account
           </CardTitle>
           <CardDescription>

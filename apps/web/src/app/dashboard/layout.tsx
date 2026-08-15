@@ -11,10 +11,10 @@ export default async function DashboardLayout({
 
   return (
     <Providers>
-      <div className="flex h-svh flex-col overflow-hidden bg-background">
+      <div className="home dash">
         <DashboardTopNav />
-        <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8">
-          <div className="mx-auto w-full max-w-6xl pb-10">{children}</div>
+        <div className="dash-body">
+          <div className="site-wrap dash-page">{children}</div>
         </div>
       </div>
     </Providers>
