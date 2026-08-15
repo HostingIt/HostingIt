@@ -45,8 +45,8 @@ export function BillingClient({
               </>
             )}
             {" · "}
-            <Link href="/pricing" className="text-accent hover:underline">
-              Compare plans
+            <Link href="/docs/apps" className="text-accent hover:underline">
+              Plan limits
             </Link>
           </>
         }

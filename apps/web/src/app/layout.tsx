@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { Syne, DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
 import { MarketingChrome } from "@/components/layout/marketing-chrome";
 import { ThemeProvider } from "@/components/theme-provider";
+import { getSession } from "@/lib/session";
 
 const syne = Syne({
   variable: "--font-syne",
@@ -42,20 +41,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getSession();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${syne.variable} ${dmSans.variable} ${jetbrains.variable} min-h-screen bg-background text-foreground antialiased`}
       >
         <ThemeProvider>
-          <MarketingChrome header={<Header />} footer={<Footer />}>
-            {children}
-          </MarketingChrome>
+          <MarketingChrome loggedIn={!!session?.user}>{children}</MarketingChrome>
         </ThemeProvider>
       </body>
     </html>

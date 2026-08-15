@@ -1,219 +1,159 @@
-import Link from "next/link";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { PlanCardsSection } from "@/components/pricing/plan-cards-section";
-import { getAppHostname } from "@/lib/dokploy";
+import { DeployPreview } from "@/components/home/deploy-preview";
+import { HomeAuthCta } from "@/components/home/home-auth-cta";
+import { HomeShowcase } from "@/components/home/home-showcase";
+import { getSession } from "@/lib/session";
 
-export default function HomePage() {
-  const exampleHost = getAppHostname("api-a1b2c3d4e5f6");
+const LIVE_GAME_URL = "https://fhusr-test-b30ece847eb3.hostingit.online/";
+
+const STEPS = [
+  {
+    num: "1",
+    title: "Connect GitHub",
+    desc: "Sign in and pick the repository you already push to.",
+  },
+  {
+    num: "2",
+    title: "We build the image",
+    desc: "Your Dockerfile becomes a running container. No YAML maze.",
+  },
+  {
+    num: "3",
+    title: "Share a live URL",
+    desc: "SSL is included. Attach your own domain when you upgrade.",
+  },
+] as const;
+
+const STATS = [
+  { value: "2 min", label: "Typical deploy" },
+  { value: "$0", label: "To start" },
+  { value: "GitHub", label: "From your repo" },
+  { value: "SSL", label: "Included" },
+] as const;
+
+export default async function HomePage() {
+  const session = await getSession();
+  const loggedIn = !!session?.user;
+
   return (
-    <div>
-      {/* Hero: one composition: brand, headline, support, CTAs, visual plane */}
-      <section className="hero-plane relative min-h-[calc(100vh-4rem)] overflow-hidden">
-        <div className="hero-grid absolute inset-0" aria-hidden />
-
-        <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl flex-col justify-center px-4 pb-24 pt-16 lg:pb-32">
-          <div className="max-w-2xl">
-            <div className="animate-fade-up flex items-center gap-4 sm:gap-5">
-              <Image
-                src="/brand/mark-light.png"
-                alt=""
-                width={72}
-                height={72}
-                className="h-14 w-14 object-contain sm:h-16 sm:w-16 dark:hidden"
-                priority
-              />
-              <Image
-                src="/brand/mark-dark.png"
-                alt=""
-                width={72}
-                height={72}
-                className="hidden h-14 w-14 object-contain sm:h-16 sm:w-16 dark:block"
-                priority
-              />
-              <p className="font-display text-5xl font-extrabold tracking-tight text-ink sm:text-6xl lg:text-7xl">
-                Hosting<span className="text-accent">It</span>
-              </p>
-            </div>
-            <h1 className="animate-fade-up-delay mt-6 font-display text-2xl font-semibold leading-snug tracking-tight text-ink sm:text-3xl">
-              Deploy Docker apps from GitHub in minutes.
-            </h1>
-            <p className="animate-fade-up-delay-2 mt-4 max-w-lg text-base leading-relaxed text-muted sm:text-lg">
-              Connect a repo, get a live URL with SSL: flat pricing, no cloud
-              maze.
-            </p>
-            <div className="animate-fade-up-delay-2 mt-8 flex flex-wrap gap-3">
-              <Link href="/signup">
-                <Button size="lg" className="px-8">
-                  Start free
-                </Button>
-              </Link>
-              <Link href="/pricing">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-ink/20 bg-surface/70 backdrop-blur-sm hover:bg-surface"
-                >
-                  See pricing
-                </Button>
-              </Link>
-            </div>
-          </div>
-
-          {/* Dominant visual: terminal deploy scene as atmospheric plane */}
-          <div
-            className="animate-fade-in animate-drift pointer-events-none absolute bottom-8 right-4 hidden w-[min(440px,42vw)] lg:block"
-            aria-hidden
-          >
-            <div className="terminal overflow-hidden rounded-lg border border-white/10 shadow-[0_20px_50px_-28px_rgba(0,0,0,0.65)]">
-              <div className="terminal-chrome flex items-center gap-1.5 border-b border-white/10 px-3 py-2">
-                <span className="h-2 w-2 rounded-sm bg-white/25" />
-                <span className="h-2 w-2 rounded-sm bg-white/25" />
-                <span className="h-2 w-2 rounded-sm bg-white/25" />
-                <span className="ml-2 font-mono text-[10px] text-white/40">
-                  deploy · my-api
-                </span>
-              </div>
-              <pre className="space-y-1 p-4 font-mono text-[11px] leading-relaxed text-[var(--terminal-text)]">
-                <code className="block opacity-45">$ hostingit deploy</code>
-                <code className="block">→ cloning github.com/you/api</code>
-                <code className="block">→ building Dockerfile</code>
-                <code className="block">→ provisioning SSL</code>
-                <code className="block text-accent">✓ live at {exampleHost}</code>
-              </pre>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How it works: one job */}
-      <section className="border-t border-border bg-surface py-20 sm:py-24">
-        <div className="mx-auto max-w-6xl px-4">
-          <h2 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            From repo to URL
-          </h2>
-          <p className="mt-3 max-w-xl text-muted">
-            Three steps. No YAML maze, no cloud console hopping.
+    <>
+      <section className="home-wrap home-hero">
+        <div className="home-hero-copy">
+          <p className="home-agent">AI agent coming soon for deployment</p>
+          <p className="home-kicker">Docker hosting for indie builders</p>
+          <h1 className="home-title">
+            Git push.
+            <br />
+            Container live.
+          </h1>
+          <p className="home-lede">
+            Connect a repo. We build the image, provision SSL, and give you a
+            URL. Flat pricing, no cloud maze.
           </p>
-
-          <ol className="mt-14 grid gap-10 sm:grid-cols-3 sm:gap-8">
-            {[
-              {
-                step: "01",
-                title: "Connect GitHub",
-                desc: "Sign in and link the repos you want to ship.",
-              },
-              {
-                step: "02",
-                title: "Pick & deploy",
-                desc: "Choose a branch. We build your Docker image.",
-              },
-              {
-                step: "03",
-                title: "Go live",
-                desc: "Get a subdomain with SSL, or attach your domain on Pro.",
-              },
-            ].map((item) => (
-              <li key={item.step} className="relative">
-                <span className="font-mono text-sm font-medium text-accent">
-                  {item.step}
-                </span>
-                <h3 className="mt-3 font-display text-xl font-semibold text-ink">
-                  {item.title}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted">
-                  {item.desc}
-                </p>
-              </li>
-            ))}
-          </ol>
+          <HomeAuthCta loggedIn={loggedIn} />
         </div>
-      </section>
-
-      {/* Who it's for: one job */}
-      <section className="border-t border-border py-20 sm:py-24">
-        <div className="mx-auto max-w-6xl px-4">
-          <h2 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Built for indie builders
-          </h2>
-          <p className="mt-3 max-w-xl text-muted">
-            Hobby apps and side projects, not mission-critical production.
-          </p>
-
-          <div className="mt-14 grid gap-y-10 sm:grid-cols-3 sm:gap-x-10">
-            {[
-              {
-                title: "GitHub-native",
-                desc: "Deploy from the repos you already push to.",
-              },
-              {
-                title: "Docker-first",
-                desc: "If it runs in a container, it runs here.",
-              },
-              {
-                title: "Predictable bill",
-                desc: "Flat monthly plans: no RAM meters or egress surprises.",
-              },
-            ].map((item) => (
-              <div key={item.title}>
-                <h3 className="font-display text-lg font-semibold text-ink">
-                  {item.title}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted">
-                  {item.desc}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing tease */}
-      <section className="border-t border-border bg-surface py-20 sm:py-24">
-        <div className="mx-auto max-w-6xl px-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h2 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-                Flat pricing
-              </h2>
-              <p className="mt-3 max-w-md text-muted">
-                Free is open now. Pro billing is coming soon.
-              </p>
+        <dl className="home-hero-stats">
+          {STATS.map((stat) => (
+            <div key={stat.label} className="home-stat">
+              <dt className="home-stat-value">{stat.value}</dt>
+              <dd className="home-stat-label">{stat.label}</dd>
             </div>
-            <Link href="/pricing">
-              <Button
-                variant="outline"
-                className="border-ink/15 hover:border-ink/30 hover:bg-background"
+          ))}
+        </dl>
+      </section>
+
+      <HomeShowcase>
+        <div className="home-wrap">
+          <h2 className="home-showcase-title">
+            Host games, APIs, and sites that stay live
+          </h2>
+          <div className="home-showcase-grid">
+            <a
+              className="home-showcase-visual"
+              href={LIVE_GAME_URL}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Image
+                src="/brand/showcase-prism-break.jpg"
+                alt="Prism Break, a web game hosted on HostingIt"
+                width={1920}
+                height={925}
+                className="home-showcase-photo"
+              />
+            </a>
+            <div className="home-showcase-aside">
+              <h3 className="home-showcase-aside-title">
+                Prism Break is live on HostingIt.
+              </h3>
+              <p className="home-showcase-aside-copy">
+                A front-end web game, shipped from GitHub to a public URL with
+                SSL. Same path as an API or a portfolio.
+              </p>
+              <p className="home-showcase-label">Features</p>
+              <ul className="home-showcase-features">
+                <li>Static front-end</li>
+                <li>Automatic SSL</li>
+                <li>Unique live URL</li>
+                <li>No cloud console</li>
+              </ul>
+              <a
+                href={LIVE_GAME_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="home-text-link"
               >
-                Compare with Railway →
-              </Button>
-            </Link>
-          </div>
-          <div className="mt-12">
-            <PlanCardsSection showActions={false} compact />
+                Open live site
+              </a>
+            </div>
           </div>
         </div>
-      </section>
+      </HomeShowcase>
 
-      {/* Final CTA */}
-      <section className="border-t border-border py-20 sm:py-24">
-        <div className="mx-auto max-w-6xl px-4 text-center">
-          <h2 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Ship something this weekend
-          </h2>
-          <p className="mx-auto mt-3 max-w-md text-muted">
-            Start on Free with one deployable app, subdomain, and SSL. Pro
-            upgrades coming soon.
-          </p>
-          <div className="mt-8">
-            <Link href="/signup">
-              <Button size="lg" variant="accent" className="px-8">
-                Create your account
-              </Button>
-            </Link>
+      <HomeShowcase flip>
+        <div className="home-wrap">
+          <h2 className="home-showcase-title">One click deploy</h2>
+          <div className="home-showcase-grid">
+            <div className="home-showcase-visual home-showcase-visual-ui">
+              <DeployPreview />
+            </div>
+            <div className="home-showcase-aside">
+              <h3 className="home-showcase-aside-title">
+                Name the app. Pick the repo. Deploy.
+              </h3>
+              <p className="home-showcase-aside-copy">
+                Connect GitHub once. Then every new app is a name, a repository,
+                and a branch.
+              </p>
+              <p className="home-showcase-label">Features</p>
+              <ul className="home-showcase-features">
+                <li>GitHub App access</li>
+                <li>Branch picker</li>
+                <li>Dockerfile detected</li>
+                <li>SSL on first boot</li>
+              </ul>
+            </div>
           </div>
         </div>
+      </HomeShowcase>
+
+      <section className="home-wrap home-section">
+        <div className="home-section-head">
+          <h2 className="home-section-title">From repo to URL</h2>
+          <p className="home-section-lede">
+            Three steps. No console hopping.
+          </p>
+        </div>
+        <ol className="home-steps">
+          {STEPS.map((step) => (
+            <li key={step.num} className="home-step">
+              <span className="home-step-num">{step.num}</span>
+              <h3 className="home-step-title">{step.title}</h3>
+              <p className="home-step-desc">{step.desc}</p>
+            </li>
+          ))}
+        </ol>
       </section>
-    </div>
+    </>
   );
 }

@@ -15,7 +15,7 @@ export function LegalPage({
     <div>
       <section className="hero-plane relative overflow-hidden border-b border-border">
         <div className="hero-grid absolute inset-0 opacity-60" aria-hidden />
-        <div className="relative mx-auto max-w-3xl px-4 py-16 sm:py-20">
+        <div className="site-wrap relative py-16 sm:py-20">
           <p className="font-mono text-xs font-medium uppercase tracking-widest text-accent">
             {label}
           </p>
@@ -26,7 +26,7 @@ export function LegalPage({
         </div>
       </section>
 
-      <div className="mx-auto max-w-3xl px-4 py-14 sm:py-16">
+      <div className="site-wrap py-14 sm:py-16">
         <div className="docs-prose">{children}</div>
       </div>
     </div>

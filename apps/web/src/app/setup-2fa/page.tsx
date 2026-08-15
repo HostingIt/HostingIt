@@ -140,10 +140,8 @@ export default function Setup2FAPage() {
   }
 
   return (
-    <div className="hero-plane relative flex min-h-[calc(100vh-4rem)] items-center justify-center overflow-hidden px-4 py-12">
-      <div className="hero-grid absolute inset-0 opacity-50" aria-hidden />
-
-      <div className="relative w-full max-w-md animate-fade-up border border-border bg-surface/95 p-6 sm:p-8">
+    <div className="auth-page">
+      <div className="auth-card animate-fade-up border border-border bg-surface p-6 sm:p-8">
         <p className="font-mono text-xs font-medium uppercase tracking-widest text-accent">
           Security
         </p>

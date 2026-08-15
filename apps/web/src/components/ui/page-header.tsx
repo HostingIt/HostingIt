@@ -19,11 +19,13 @@ export function PageHeader({
       )}
     >
       <div>
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink">
+        <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-[2rem]">
           {title}
         </h1>
         {description && (
-          <p className="mt-2 text-muted">{description}</p>
+          <p className="mt-2 max-w-2xl text-base leading-relaxed text-muted">
+            {description}
+          </p>
         )}
       </div>
       {action && <div className="shrink-0">{action}</div>}

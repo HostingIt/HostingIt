@@ -2,7 +2,7 @@ name: Publish image
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   workflow_dispatch:
 
 jobs:
@@ -31,6 +31,7 @@ jobs:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=staging,enable=${{ github.ref == 'refs/heads/staging' }}
             type=sha,prefix=sha-
 
       - name: Set up Docker Buildx
