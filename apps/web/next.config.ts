@@ -3,6 +3,16 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   transpilePackages: ["@hostingit/dokploy-client"],
   output: "standalone",
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.hostingit.online" }],
+        destination: "https://hostingit.online/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

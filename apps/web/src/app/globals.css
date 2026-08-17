@@ -1028,11 +1028,20 @@ input:-webkit-autofill:focus {
 
 .home-title {
   margin-top: 0.7rem;
-  max-width: 14ch;
   font-size: clamp(2.5rem, 7vw, 5.25rem);
   font-weight: 600;
   letter-spacing: -0.048em;
   line-height: 1.02;
+  color: var(--ink);
+}
+
+.home-slogan {
+  margin-top: 0.85rem;
+  max-width: 14ch;
+  font-size: clamp(1.55rem, 4vw, 2.5rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
   color: var(--ink);
 }
 

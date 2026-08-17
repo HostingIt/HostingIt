@@ -1,9 +1,23 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { DeployPreview } from "@/components/home/deploy-preview";
 import { HomeAuthCta } from "@/components/home/home-auth-cta";
 import { HomeShowcase } from "@/components/home/home-showcase";
 import { getSession } from "@/lib/session";
+
+export const metadata: Metadata = {
+  title: "HostingIt",
+  applicationName: "HostingIt",
+  description:
+    "The purpose of HostingIt is to provide managed Docker hosting for indie developers. HostingIt builds Docker apps from GitHub, provisions SSL, and publishes a live URL.",
+  openGraph: {
+    siteName: "HostingIt",
+    title: "HostingIt",
+    description:
+      "The purpose of HostingIt is to provide managed Docker hosting for indie developers. HostingIt builds Docker apps from GitHub, provisions SSL, and publishes a live URL.",
+  },
+};
 
 const LIVE_GAME_URL = "https://fhusr-test-b30ece847eb3.hostingit.online/";
 
@@ -41,18 +55,13 @@ export default async function HomePage() {
       <section className="home-wrap home-hero">
         <div className="home-hero-copy">
           <p className="home-agent">AI agent coming soon for deployment</p>
-          <p className="home-kicker">HostingIt</p>
-          <h1 className="home-title">
-            HostingIt
-            <br />
-            Git push.
-            <br />
-            Container live.
-          </h1>
+          <p className="home-kicker">Application name: HostingIt</p>
+          <h1 className="home-title">HostingIt</h1>
+          <p className="home-slogan">Git push. Container live.</p>
           <p className="home-lede">
-            HostingIt is managed Docker hosting for indie developers. Connect a
-            GitHub repo. We build the image, provision SSL, and give you a URL.
-            Flat pricing, no cloud maze.
+            The purpose of HostingIt is to provide managed Docker hosting for
+            indie developers. Connect a GitHub repo. HostingIt builds the image,
+            provisions SSL, and gives you a URL. Flat pricing, no cloud maze.
           </p>
           <HomeAuthCta loggedIn={loggedIn} />
         </div>
@@ -68,18 +77,19 @@ export default async function HomePage() {
 
       <section className="home-wrap home-section home-purpose">
         <div className="home-section-head">
-          <h2 className="home-section-title">What HostingIt is</h2>
+          <h2 className="home-section-title">Purpose of HostingIt</h2>
           <p className="home-section-lede">
-            HostingIt is a managed Docker hosting platform for indie developers
-            and small projects. Connect a GitHub repository; HostingIt builds
-            the image, provisions SSL, and publishes a live URL. Best-effort
-            hobby hosting, not a mission-critical SLA.
+            The purpose of HostingIt is to provide managed Docker hosting for
+            indie developers and small projects. HostingIt is an application
+            that connects a GitHub repository, builds a Docker image, provisions
+            SSL, and publishes a live public URL. HostingIt is best-effort hobby
+            hosting, not a mission-critical SLA.
           </p>
           <p className="home-section-lede">
-            Sign in with Google to create a HostingIt account. HostingIt
-            requests your Google name and email only to authenticate you.
-            HostingIt does not access Gmail, Drive, Calendar, Contacts, or other
-            Google data.{" "}
+            Users sign in to HostingIt with Google to create and access a
+            HostingIt account. HostingIt requests the Google name and email only
+            to authenticate the user. HostingIt does not access Gmail, Drive,
+            Calendar, Contacts, or any other Google data.{" "}
             <Link href="/privacy" className="home-text-link">
               Privacy Policy
             </Link>
