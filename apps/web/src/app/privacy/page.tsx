@@ -22,6 +22,20 @@ export default function PrivacyPage() {
         your account, deploy your applications, and process billing requests.
       </p>
 
+      <h2>Google user data</h2>
+      <p>
+        When you sign in to HostingIt with Google, HostingIt receives your
+        Google name, email address, and Google account identifier. HostingIt
+        uses that information only to create and authenticate your HostingIt
+        account.
+      </p>
+      <p>
+        HostingIt does not access Gmail, Drive, Calendar, Contacts, or any
+        other Google content. HostingIt does not sell Google user data. Google
+        account identifiers are stored while your account is active and are
+        deleted when you delete your account.
+      </p>
+
       <h2>Third parties</h2>
       <p>
         We use our own deploy infrastructure for hosting, GitHub and Google for

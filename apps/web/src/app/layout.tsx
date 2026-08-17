@@ -27,16 +27,18 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  applicationName: "HostingIt",
   title: "HostingIt: Docker hosting for developers",
   description:
-    "Deploy Docker apps from GitHub in minutes. Best-effort hosting for hobby projects and small applications.",
+    "HostingIt is managed Docker hosting for indie developers. Deploy Docker apps from GitHub in minutes. Best-effort hosting for hobby projects and small applications.",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL ?? "https://hostingit.online"
   ),
   openGraph: {
+    siteName: "HostingIt",
     title: "HostingIt: Docker hosting for developers",
     description:
-      "Deploy Docker apps from GitHub in minutes. Best-effort hosting for hobby projects and small applications.",
+      "HostingIt is managed Docker hosting for indie developers. Deploy Docker apps from GitHub in minutes. Best-effort hosting for hobby projects and small applications.",
     images: [{ url: "/og.png", width: 1200, height: 630, alt: "HostingIt" }],
   },
 };

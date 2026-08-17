@@ -14,10 +14,11 @@ export default function SignupPage() {
       <Card className="auth-card">
         <CardHeader>
           <CardTitle className="text-2xl font-semibold tracking-tight">
-            Create your account
+            Create a HostingIt account
           </CardTitle>
           <CardDescription>
-            Free tier includes 1 app. You&apos;ll set up 2FA on first login.
+            HostingIt free tier includes 1 app. You&apos;ll set up 2FA on first
+            login.
           </CardDescription>
         </CardHeader>
         <CardContent>

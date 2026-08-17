@@ -43,11 +43,7 @@ export function BrandLogo({
         className={cn(markClass, "hidden object-contain dark:block")}
         priority={priority}
       />
-      {withWordmark && (
-        <span className={textClass}>
-          Hosting<span className="text-accent">It</span>
-        </span>
-      )}
+      {withWordmark && <span className={textClass}>HostingIt</span>}
     </span>
   );
 

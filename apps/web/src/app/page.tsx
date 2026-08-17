@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { DeployPreview } from "@/components/home/deploy-preview";
 import { HomeAuthCta } from "@/components/home/home-auth-cta";
 import { HomeShowcase } from "@/components/home/home-showcase";
@@ -40,15 +41,18 @@ export default async function HomePage() {
       <section className="home-wrap home-hero">
         <div className="home-hero-copy">
           <p className="home-agent">AI agent coming soon for deployment</p>
-          <p className="home-kicker">Docker hosting for indie builders</p>
+          <p className="home-kicker">HostingIt</p>
           <h1 className="home-title">
+            HostingIt
+            <br />
             Git push.
             <br />
             Container live.
           </h1>
           <p className="home-lede">
-            Connect a repo. We build the image, provision SSL, and give you a
-            URL. Flat pricing, no cloud maze.
+            HostingIt is managed Docker hosting for indie developers. Connect a
+            GitHub repo. We build the image, provision SSL, and give you a URL.
+            Flat pricing, no cloud maze.
           </p>
           <HomeAuthCta loggedIn={loggedIn} />
         </div>
@@ -60,6 +64,27 @@ export default async function HomePage() {
             </div>
           ))}
         </dl>
+      </section>
+
+      <section className="home-wrap home-section home-purpose">
+        <div className="home-section-head">
+          <h2 className="home-section-title">What HostingIt is</h2>
+          <p className="home-section-lede">
+            HostingIt is a managed Docker hosting platform for indie developers
+            and small projects. Connect a GitHub repository; HostingIt builds
+            the image, provisions SSL, and publishes a live URL. Best-effort
+            hobby hosting, not a mission-critical SLA.
+          </p>
+          <p className="home-section-lede">
+            Sign in with Google to create a HostingIt account. HostingIt
+            requests your Google name and email only to authenticate you.
+            HostingIt does not access Gmail, Drive, Calendar, Contacts, or other
+            Google data.{" "}
+            <Link href="/privacy" className="home-text-link">
+              Privacy Policy
+            </Link>
+          </p>
+        </div>
       </section>
 
       <HomeShowcase>

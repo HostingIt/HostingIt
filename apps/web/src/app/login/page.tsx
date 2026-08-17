@@ -27,9 +27,11 @@ export default async function LoginPage({
       <Card className="auth-card">
         <CardHeader>
           <CardTitle className="text-2xl font-semibold tracking-tight">
-            Welcome back
+            Sign in to HostingIt
           </CardTitle>
-          <CardDescription>Sign in with GitHub or Google</CardDescription>
+          <CardDescription>
+            Sign in to HostingIt with GitHub or Google
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {errorMessage && (
