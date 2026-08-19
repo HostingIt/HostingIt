@@ -2,14 +2,6 @@ import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { MFA_STAMP_COOKIE, verifyMfaStamp } from "@/lib/mfa-stamp";
 
-const STAGING_GATE_HEADER =
-  process.env.STAGING_GATE_HEADER ?? "x-staging-key";
-const STAGING_GATE_VALUE = process.env.STAGING_GATE_VALUE;
-
-function stagingGateActive(): boolean {
-  return Boolean(STAGING_GATE_VALUE);
-}
-
 const mfaAllowedPaths = ["/setup-2fa", "/login/2fa"];
 const mfaApiPrefix = "/api/auth/2fa";
 
@@ -29,13 +21,6 @@ function isMfaAllowedPath(pathname: string): boolean {
 }
 
 export default auth(async (req) => {
-  if (stagingGateActive()) {
-    const key = req.headers.get(STAGING_GATE_HEADER);
-    if (key !== STAGING_GATE_VALUE) {
-      return new NextResponse("403 Forbidden", { status: 403 });
-    }
-  }
-
   const { pathname } = req.nextUrl;
   const session = req.auth;
   const isLoggedIn = !!session?.user?.id;
@@ -140,5 +125,13 @@ export default auth(async (req) => {
 });
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/dashboard/:path*",
+    "/admin/:path*",
+    "/login",
+    "/login/2fa",
+    "/signup",
+    "/setup-2fa",
+    "/api/:path*",
+  ],
 };
