@@ -2,19 +2,12 @@ import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { MFA_STAMP_COOKIE, verifyMfaStamp } from "@/lib/mfa-stamp";
 
-const STAGING_GATE_URL = process.env.STAGING_GATE_URL?.replace(/\/$/, "");
 const STAGING_GATE_HEADER =
   process.env.STAGING_GATE_HEADER ?? "x-staging-key";
 const STAGING_GATE_VALUE = process.env.STAGING_GATE_VALUE;
 
 function stagingGateActive(): boolean {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
-  return Boolean(
-    STAGING_GATE_URL &&
-      STAGING_GATE_VALUE &&
-      appUrl &&
-      appUrl === STAGING_GATE_URL
-  );
+  return Boolean(STAGING_GATE_VALUE);
 }
 
 const mfaAllowedPaths = ["/setup-2fa", "/login/2fa"];
