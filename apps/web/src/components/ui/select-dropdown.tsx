@@ -58,7 +58,7 @@ export function SelectDropdown({
           disabled={disabled}
           aria-label={label}
           className={cn(
-            "field-select text-left",
+            "field-select items-center text-left",
             size === "sm" && "field-select-sm",
             !selected && "text-muted"
           )}

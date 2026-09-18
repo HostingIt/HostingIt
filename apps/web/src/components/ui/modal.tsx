@@ -40,11 +40,11 @@ export function Modal({
         <Dialog.Content
           className={cn(
             "z-50 border border-border bg-surface text-ink shadow-lg outline-none",
+            contentClassName,
             variant === "center" &&
               "fixed left-1/2 top-1/2 w-[min(28rem,calc(100vw-1.5rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl p-5",
             variant === "sheet" &&
-              "fixed inset-y-0 left-0 flex w-64 flex-col rounded-none p-0 lg:hidden",
-            contentClassName
+              "fixed inset-y-0 left-0 flex h-svh w-64 flex-col overflow-hidden rounded-none p-0"
           )}
         >
           {variant === "sheet" ? (

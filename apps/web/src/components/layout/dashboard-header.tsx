@@ -112,29 +112,30 @@ export function DashboardHeader({
             title="Dashboard navigation"
             variant="sheet"
             overlayClassName="lg:hidden"
-            contentClassName="relative"
             trigger={
               <button
                 type="button"
                 className="dash-menu-btn"
                 aria-label="Open navigation"
               >
-                <Menu className="h-4.5 w-4.5" aria-hidden />
+                <Menu className="h-4 w-4" aria-hidden />
               </button>
             }
           >
-            <div className="flex h-16 shrink-0 items-center border-b border-border px-4">
-              <BrandLogo href="/dashboard" />
-              <button
-                type="button"
-                className="absolute right-3 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-ink"
-                aria-label="Close navigation"
-                onClick={() => setOpen(false)}
-              >
-                <X className="h-4 w-4" aria-hidden />
-              </button>
+            <div className="relative flex min-h-0 flex-1 flex-col">
+              <div className="flex h-16 shrink-0 items-center border-b border-border px-4">
+                <BrandLogo href="/dashboard" />
+                <button
+                  type="button"
+                  className="absolute right-3 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-ink"
+                  aria-label="Close navigation"
+                  onClick={() => setOpen(false)}
+                >
+                  <X className="h-4 w-4" aria-hidden />
+                </button>
+              </div>
+              <SidebarNav onNavigate={() => setOpen(false)} />
             </div>
-            <SidebarNav onNavigate={() => setOpen(false)} />
           </Modal>
           <Link
             href="/dashboard"
