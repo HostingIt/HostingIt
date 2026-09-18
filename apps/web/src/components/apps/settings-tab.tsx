@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import type { App } from "@/db/schema";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
-import { PickerModal } from "@/components/ui/picker-modal";
+import { SelectDropdown } from "@/components/ui/select-dropdown";
 
 const BUILD_TYPES = [
   { value: "nixpacks", label: "Auto-detect (Nixpacks)" },
@@ -220,8 +220,8 @@ export function SettingsTab({ app, onChanged }: SettingsTabProps) {
           </div>
           <div className="space-y-2">
             <Label>Build type</Label>
-            <PickerModal
-              title="Build type"
+            <SelectDropdown
+              label="Build type"
               value={settings.buildType}
               options={BUILD_TYPES}
               onChange={(buildType) => setSettings({ ...settings, buildType })}
