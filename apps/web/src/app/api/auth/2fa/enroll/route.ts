@@ -24,6 +24,7 @@ import {
   clearRateLimit,
   getClientIp,
 } from "@/lib/rate-limit";
+import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
 const PENDING_MAX_AGE = 600;
 
@@ -131,6 +132,12 @@ export async function POST(request: Request) {
       updatedAt: new Date(),
     })
     .where(eq(users.id, session.user.id));
+
+  recordAuditEvent({
+    userId: session.user.id,
+    action: AUDIT_ACTIONS.authTwoFactorEnabled,
+    request,
+  });
 
   const mfaProof = await createMfaStamp(session.user.id);
   const response = NextResponse.json({

@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { paymentRequests } from "@/db/schema";
 import { PAYMENTS_ENABLED, PLANS } from "@/lib/plans";
+import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
 const paymentSchema = z.object({
   plan: z.enum(["pro"]),
@@ -68,6 +69,13 @@ export async function POST(request: Request) {
         referenceNote,
       })
       .returning();
+
+    recordAuditEvent({
+      userId: session.user.id,
+      action: AUDIT_ACTIONS.billingRequest,
+      request,
+      metadata: { plan: "pro", method },
+    });
 
     return NextResponse.json({ request: request_ });
   } catch (error) {

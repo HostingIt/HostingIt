@@ -10,6 +10,7 @@ import { applyPlanResourceLimits } from "@/lib/app-resources";
 import { ensureStaticDomainPort } from "@/lib/dokploy-domain";
 import { syncDokployGitSource } from "@/lib/deploy-git";
 import { toClientError } from "@/lib/safe-error";
+import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
 const buildTypes = [
   "nixpacks",
@@ -179,6 +180,19 @@ export async function PATCH(
         .set({ status: "deploying", updatedAt: new Date() })
         .where(eq(apps.id, app.id));
     }
+
+    recordAuditEvent({
+      userId: session.user.id,
+      appId: app.id,
+      action: AUDIT_ACTIONS.appSettingsUpdate,
+      request,
+      metadata: {
+        fields: Object.keys(data),
+        branch: data.githubBranch,
+        buildType: data.buildType,
+        redeploy: data.redeploy === true,
+      },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

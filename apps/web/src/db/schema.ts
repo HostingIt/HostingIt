@@ -7,6 +7,8 @@ import {
   pgEnum,
   decimal,
   integer,
+  jsonb,
+  index,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -155,6 +157,32 @@ export const sessions = pgTable("sessions", {
   expires: timestamp("expires").notNull(),
 });
 
+/** Security audit trail: auth events, app lifecycle changes, billing, etc. */
+export const auditLogs = pgTable(
+  "audit_logs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    appId: uuid("app_id").references(() => apps.id, { onDelete: "set null" }),
+    action: text("action").notNull(),
+    /** Action-specific context. Never stores secret values. */
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    ip: text("ip"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("audit_logs_user_created_idx").on(table.userId, table.createdAt),
+    index("audit_logs_action_idx").on(table.action),
+    index("audit_logs_app_idx").on(table.appId),
+  ]
+);
+
 export const usersRelations = relations(users, ({ many }) => ({
   apps: many(apps),
   paymentRequests: many(paymentRequests),
@@ -181,3 +209,4 @@ export type User = typeof users.$inferSelect;
 export type App = typeof apps.$inferSelect;
 export type PaymentRequest = typeof paymentRequests.$inferSelect;
 export type Deployment = typeof deployments.$inferSelect;
+export type AuditLog = typeof auditLogs.$inferSelect;

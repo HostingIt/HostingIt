@@ -7,6 +7,7 @@ import { apps } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
 import { STATIC_CONTAINER_PORT } from "@/lib/dokploy-domain";
 import { canUseCustomDomain } from "@/lib/plans";
+import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
 const HOSTNAME_RE =
   /^(?=.{1,253}$)(?!-)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.(?!-)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
@@ -74,6 +75,14 @@ export async function POST(
         updatedAt: new Date(),
       })
       .where(eq(apps.id, app.id));
+
+    recordAuditEvent({
+      userId: session.user.id,
+      appId: app.id,
+      action: AUDIT_ACTIONS.appDomainUpdate,
+      request,
+      metadata: { domain: parsed.data.domain },
+    });
 
     return NextResponse.json({ success: true, domain: parsed.data.domain });
   } catch (error) {

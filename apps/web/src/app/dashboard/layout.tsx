@@ -1,5 +1,6 @@
 import { Providers } from "@/components/providers";
-import { DashboardTopNav } from "@/components/layout/dashboard-top-nav";
+import { DashboardHeader } from "@/components/layout/dashboard-header";
+import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { requireAuth } from "@/lib/session";
 
 export default async function DashboardLayout({
@@ -12,9 +13,12 @@ export default async function DashboardLayout({
   return (
     <Providers>
       <div className="home dash">
-        <DashboardTopNav />
-        <div className="dash-body">
-          <div className="site-wrap dash-page">{children}</div>
+        <DashboardSidebar />
+        <div className="dash-main">
+          <DashboardHeader />
+          <div className="dash-body">
+            <div className="site-wrap dash-page">{children}</div>
+          </div>
         </div>
       </div>
     </Providers>
