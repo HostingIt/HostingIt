@@ -3,9 +3,11 @@ import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { getSession } from "@/lib/session";
 import { db } from "@/db";
-import { apps } from "@/db/schema";
+import { apps, users } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
-import { STATIC_CONTAINER_PORT } from "@/lib/dokploy-domain";
+import { fetchDockerfileText } from "@/lib/dokploy-domain";
+import { resolveContainerPort } from "@/lib/container-port";
+import { parseEnvString } from "@/lib/env-vars";
 import { canUseCustomDomain } from "@/lib/plans";
 import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
@@ -60,10 +62,29 @@ export async function POST(
   try {
     const dokploy = getDokployClient();
     const remote = await dokploy.getApplication(app.dokployAppId);
+    const [owner] = await db
+      .select({ installationId: users.githubInstallationId })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+    const dockerfileText = await fetchDockerfileText({
+      installationId: owner?.installationId,
+      owner: app.githubOwner,
+      repo: app.githubRepo,
+      branch: app.githubBranch,
+      buildPath: remote.customGitBuildPath ?? remote.buildPath ?? "/",
+      dockerfile: remote.dockerfile,
+      dockerContextPath: remote.dockerContextPath,
+    });
+    const containerPort = resolveContainerPort({
+      buildType: remote.buildType,
+      env: parseEnvString(remote.env),
+      dockerfileText,
+    });
     const domain = await dokploy.createDomain({
       host: parsed.data.domain,
       applicationId: app.dokployAppId,
-      port: remote.buildType === "static" ? STATIC_CONTAINER_PORT : undefined,
+      port: containerPort,
     });
 
     await db
