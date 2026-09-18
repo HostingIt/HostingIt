@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PickerModal } from "@/components/ui/picker-modal";
 import { LogTerminal } from "@/components/apps/log-terminal";
 
 const TAIL_OPTIONS = [100, 200, 500, 1000];
@@ -107,30 +108,23 @@ export function LogsTab({ appId }: { appId: string }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <select
-          value={tail}
-          onChange={(e) => setTail(Number(e.target.value))}
-          className="field-select field-select-sm"
-          aria-label="Number of lines"
-        >
-          {TAIL_OPTIONS.map((n) => (
-            <option key={n} value={n}>
-              {n} lines
-            </option>
-          ))}
-        </select>
-        <select
+        <PickerModal
+          title="Log lines"
+          size="sm"
+          value={String(tail)}
+          options={TAIL_OPTIONS.map((n) => ({
+            value: String(n),
+            label: `${n} lines`,
+          }))}
+          onChange={(v) => setTail(Number(v))}
+        />
+        <PickerModal
+          title="Time window"
+          size="sm"
           value={since}
-          onChange={(e) => setSince(e.target.value)}
-          className="field-select field-select-sm"
-          aria-label="Time window"
-        >
-          {SINCE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+          options={SINCE_OPTIONS}
+          onChange={setSince}
+        />
         <form
           className="flex min-w-[12rem] flex-1 gap-2"
           onSubmit={(e) => {
