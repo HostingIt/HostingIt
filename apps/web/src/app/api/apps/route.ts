@@ -13,7 +13,10 @@ import { envVarListSchema } from "@/lib/env-var-schema";
 import { syncDokployGitSource } from "@/lib/deploy-git";
 import { ensureUserDokployEnvironment } from "@/lib/dokploy-user";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
-import { STATIC_CONTAINER_PORT } from "@/lib/dokploy-domain";
+import {
+  fetchDockerfileText,
+} from "@/lib/dokploy-domain";
+import { resolveContainerPort } from "@/lib/container-port";
 import { toClientError } from "@/lib/safe-error";
 import { InvalidAppSlugError, isValidAppNameForSlug } from "@/lib/utils";
 import {
@@ -214,10 +217,25 @@ export async function POST(request: Request) {
       });
     }
 
+    const dockerfileText = await fetchDockerfileText({
+      installationId: user.githubInstallationId,
+      owner: githubOwner,
+      repo: githubRepo,
+      branch: githubBranch,
+      buildPath,
+      dockerfile,
+      dockerContextPath,
+    });
+    const containerPort = resolveContainerPort({
+      buildType,
+      env: envPayload,
+      dockerfileText,
+    });
+
     const domain = await dokploy.createDomain({
       host: subdomain,
       applicationId,
-      port: buildType === "static" ? STATIC_CONTAINER_PORT : undefined,
+      port: containerPort,
     });
 
     const domainId =

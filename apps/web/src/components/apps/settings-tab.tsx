@@ -26,6 +26,7 @@ type Settings = {
   dockerBuildStage: string;
   publishDirectory: string;
   isStaticSpa: boolean;
+  containerPort: number;
 };
 
 interface SettingsTabProps {
@@ -59,6 +60,7 @@ export function SettingsTab({ app, onChanged }: SettingsTabProps) {
           dockerBuildStage: data.dockerBuildStage ?? "",
           publishDirectory: data.publishDirectory ?? "dist",
           isStaticSpa: data.isStaticSpa ?? false,
+          containerPort: data.containerPort ?? 3000,
         });
       }
     } finally {
@@ -192,6 +194,27 @@ export function SettingsTab({ app, onChanged }: SettingsTabProps) {
             <span className="font-mono">backend/</span>, set Root directory to the
             folder you want online. Use Dockerfile if auto-detect fails.
           </p>
+          <div className="space-y-2">
+            <Label htmlFor="containerPort">Container port</Label>
+            <Input
+              id="containerPort"
+              type="number"
+              min={1}
+              max={65535}
+              value={settings.containerPort}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  containerPort: Number.parseInt(e.target.value, 10) || 3000,
+                })
+              }
+            />
+            <p className="text-xs text-muted">
+              Traefik routes your domain to this port inside the container.
+              Detected from <span className="font-mono">PORT</span> or{" "}
+              <span className="font-mono">EXPOSE</span> when possible.
+            </p>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="buildType">Build type</Label>
             <select
