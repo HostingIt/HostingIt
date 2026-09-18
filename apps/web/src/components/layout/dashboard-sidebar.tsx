@@ -114,18 +114,16 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
 export function DashboardSidebar() {
   return (
-    <aside className="dash-sidebar hidden lg:flex">
-      <div className="flex h-full w-60 shrink-0 flex-col border-r border-border bg-surface">
-        <div className="flex h-16 items-center border-b border-border px-4">
-          <BrandLogo href="/dashboard" />
-        </div>
-        <SidebarNav />
-        <div className="border-t border-border px-3 py-3">
-          <Link href="/" className="dash-side-link">
-            <span aria-hidden>←</span>
-            Back to site
-          </Link>
-        </div>
+    <aside className="dash-sidebar hidden w-60 shrink-0 flex-col border-r border-border bg-surface lg:flex">
+      <div className="flex h-16 shrink-0 items-center border-b border-border px-4">
+        <BrandLogo href="/dashboard" />
+      </div>
+      <SidebarNav />
+      <div className="shrink-0 border-t border-border px-3 py-3">
+        <Link href="/" className="dash-side-link">
+          <span aria-hidden>←</span>
+          Back to site
+        </Link>
       </div>
     </aside>
   );
