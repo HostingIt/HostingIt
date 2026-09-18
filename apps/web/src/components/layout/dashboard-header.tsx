@@ -109,6 +109,9 @@ export function DashboardHeader() {
                 aria-label="Dashboard navigation"
                 className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-surface lg:hidden"
               >
+                <Dialog.Title className="sr-only">
+                  Dashboard navigation
+                </Dialog.Title>
                 <div className="flex h-16 items-center border-b border-border px-4">
                   <BrandLogo href="/dashboard" />
                 </div>
@@ -134,9 +137,13 @@ export function DashboardHeader() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Link href="/dashboard/apps/new" className="home-dash">
-            <Plus className="mr-1 h-3.5 w-3.5" aria-hidden />
-            <span>New App</span>
+          <Link
+            href="/dashboard/apps/new"
+            className="home-dash"
+            aria-label="New App"
+          >
+            <Plus className="h-3.5 w-3.5 sm:mr-1" aria-hidden />
+            <span className="hidden sm:inline">New App</span>
           </Link>
           <ThemeToggle className="home-theme-toggle" />
           <UserMenu />
