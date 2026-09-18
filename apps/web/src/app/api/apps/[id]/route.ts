@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { apps } from "@/db/schema";
 import { getAppPublicUrl } from "@/lib/dokploy";
 import { deleteAppFromDokploy } from "@/lib/dokploy-app-delete";
+import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
 export async function GET(
   _request: Request,
@@ -34,7 +35,7 @@ export async function GET(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
@@ -62,6 +63,13 @@ export async function DELETE(
   await deleteAppFromDokploy(app, userAppCount);
 
   await db.delete(apps).where(eq(apps.id, app.id));
+
+  recordAuditEvent({
+    userId: session.user.id,
+    action: AUDIT_ACTIONS.appDelete,
+    request,
+    metadata: { name: app.name, slug: app.slug },
+  });
 
   return NextResponse.json({ success: true });
 }

@@ -12,6 +12,7 @@ import { parseEnvString, serializeEnvVars } from "@/lib/env-vars";
 import { envVarListSchema } from "@/lib/env-var-schema";
 import { mergeEnvVarUpdates, toMaskedEnvResponse } from "@/lib/env-secrets";
 import { toClientError } from "@/lib/safe-error";
+import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
 export async function GET(
   _request: Request,
@@ -116,6 +117,19 @@ export async function PUT(
         .set({ status: "deploying", updatedAt: new Date() })
         .where(eq(apps.id, app.id));
     }
+
+    recordAuditEvent({
+      userId: session.user.id,
+      appId: app.id,
+      action: AUDIT_ACTIONS.appEnvUpdate,
+      request,
+      metadata: {
+        envKeys: env.filter((row) => row.key.trim()).map((row) => row.key),
+        buildSecretsChanged: parsed.data.buildSecrets !== undefined,
+        buildArgsChanged: parsed.data.buildArgs !== undefined,
+        redeploy: parsed.data.redeploy === true,
+      },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

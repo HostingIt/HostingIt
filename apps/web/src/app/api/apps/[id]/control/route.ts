@@ -6,10 +6,18 @@ import { db } from "@/db";
 import { apps } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
 import { toClientError } from "@/lib/safe-error";
+import { AUDIT_ACTIONS, recordAuditEvent, type AuditAction } from "@/lib/audit";
 
 const controlSchema = z.object({
   action: z.enum(["start", "stop", "restart", "cancel"]),
 });
+
+const CONTROL_AUDIT: Record<"start" | "stop" | "restart" | "cancel", AuditAction> = {
+  start: AUDIT_ACTIONS.appStart,
+  stop: AUDIT_ACTIONS.appStop,
+  restart: AUDIT_ACTIONS.appRestart,
+  cancel: AUDIT_ACTIONS.appCancel,
+};
 
 export async function POST(
   request: Request,
@@ -73,6 +81,13 @@ export async function POST(
         await dokploy.cancelDeployment(app.dokployAppId);
         break;
     }
+
+    recordAuditEvent({
+      userId: session.user.id,
+      appId: app.id,
+      action: CONTROL_AUDIT[action],
+      request,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

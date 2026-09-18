@@ -24,6 +24,7 @@ import {
   type DokployProvisionResources,
 } from "@/lib/app-create-guard";
 import { syncDeploymentsFromDokploy } from "@/lib/deployments";
+import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
 const createAppSchema = z.object({
   name: z
@@ -253,6 +254,20 @@ export async function POST(request: Request) {
     if (deployImmediately) {
       await syncDeploymentsFromDokploy(dokploy, app.id, applicationId);
     }
+
+    recordAuditEvent({
+      userId: session.user.id,
+      appId: app.id,
+      action: AUDIT_ACTIONS.appCreate,
+      request,
+      metadata: {
+        name,
+        repo: `${githubOwner}/${githubRepo}`,
+        branch: githubBranch,
+        buildType,
+        deployImmediately,
+      },
+    });
 
     return NextResponse.json({
       app,

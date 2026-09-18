@@ -1,4 +1,5 @@
 import NextAuth from "next-auth";
+import { headers as nextHeaders } from "next/headers";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 import {
@@ -13,6 +14,7 @@ import {
   readMfaStampVerified,
   verifyMfaStamp,
 } from "@/lib/mfa-stamp";
+import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
 async function sessionIsMfaVerified(
   userId: string | undefined,
@@ -24,6 +26,14 @@ async function sessionIsMfaVerified(
     return await readMfaStampVerified(userId);
   } catch {
     return false;
+  }
+}
+
+async function requestHeaders(): Promise<Headers | undefined> {
+  try {
+    return await nextHeaders();
+  } catch {
+    return undefined;
   }
 }
 
@@ -131,9 +141,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (isLinking || (sameUser && previousMfaVerified)) {
           token.mfaVerified = true;
+          if (isLinking && previousUserId) {
+            recordAuditEvent({
+              userId: previousUserId,
+              action: AUDIT_ACTIONS.securityProviderLinked,
+              metadata: { provider: account.provider },
+              headers: await requestHeaders(),
+            });
+          }
         } else {
           // Fresh login — require TOTP again (or enrollment).
           token.mfaVerified = false;
+          recordAuditEvent({
+            userId: dbUser.id,
+            action: AUDIT_ACTIONS.authLogin,
+            metadata: { provider: account.provider },
+            headers: await requestHeaders(),
+          });
           try {
             await clearMfaStampCookie();
           } catch {

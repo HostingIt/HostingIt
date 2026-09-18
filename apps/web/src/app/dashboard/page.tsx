@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { desc, eq, inArray } from "drizzle-orm";
+import { Boxes, Gauge, Play, Rocket, type LucideIcon } from "lucide-react";
 import { requireAuth } from "@/lib/session";
 import { db } from "@/db";
 import { apps, deployments } from "@/db/schema";
@@ -64,13 +65,14 @@ export default async function DashboardOverviewPage() {
   ).length;
   const stoppedCount = userApps.filter((a) => a.status === "stopped").length;
 
-  const stats = [
-    { label: "Total apps", value: userApps.length },
-    { label: "Running", value: runningCount },
-    { label: "Deploying", value: deployingCount },
+  const stats: { label: string; value: string | number; icon: LucideIcon }[] = [
+    { label: "Total apps", value: userApps.length, icon: Boxes },
+    { label: "Running", value: runningCount, icon: Play },
+    { label: "Deploying", value: deployingCount, icon: Rocket },
     {
       label: "Plan usage",
       value: `${userApps.length}/${planConfig.maxApps}`,
+      icon: Gauge,
     },
   ];
 
@@ -89,13 +91,16 @@ export default async function DashboardOverviewPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <Card key={stat.label} className="card-elevated border-border">
-            <CardContent className="p-5">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted">
-                {stat.label}
-              </p>
-              <p className="mt-1 font-display text-2xl font-bold text-ink">
-                {stat.value}
-              </p>
+            <CardContent className="flex items-start justify-between gap-3 p-5">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted">
+                  {stat.label}
+                </p>
+                <p className="mt-1 font-display text-2xl font-bold text-ink">
+                  {stat.value}
+                </p>
+              </div>
+              <stat.icon className="h-5 w-5 shrink-0 text-muted" aria-hidden />
             </CardContent>
           </Card>
         ))}
