@@ -90,6 +90,41 @@ export function getPlanLimit(plan: string): number {
   return PLANS[normalizePlan(plan)].maxApps;
 }
 
+export type HostingIdentity = {
+  role: string;
+  email: string;
+  plan: string;
+};
+
+/** Unlimited app count only for ADMIN_EMAIL with role admin. Never trust the client. */
+export function isUnlimitedHosting(user: {
+  role: string;
+  email: string;
+}): boolean {
+  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  if (!adminEmail) return false;
+  return (
+    user.role === "admin" && user.email.trim().toLowerCase() === adminEmail
+  );
+}
+
+/** `null` means no cap. */
+export function getEffectiveAppLimit(user: HostingIdentity): number | null {
+  if (isUnlimitedHosting(user)) return null;
+  return getPlanLimit(user.plan);
+}
+
+export function formatAppQuota(
+  count: number,
+  limit: number | null
+): string {
+  return limit === null ? `${count}/∞` : `${count}/${limit}`;
+}
+
+export function canCreateApp(count: number, limit: number | null): boolean {
+  return limit === null || count < limit;
+}
+
 export function canUseCustomDomain(plan: string): boolean {
   return PLANS[normalizePlan(plan)].customDomain;
 }

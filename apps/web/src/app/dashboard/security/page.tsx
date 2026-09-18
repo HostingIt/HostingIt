@@ -22,6 +22,7 @@ import {
   Variable,
   type LucideIcon,
 } from "lucide-react";
+import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/session";
 import { db } from "@/db";
 import { apps, auditLogs, users } from "@/db/schema";
@@ -137,18 +138,31 @@ function timeAgo(date: Date): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-function securityUrl(filter: FilterKey, page: number): string {
+function securityUrl(
+  filter: FilterKey,
+  page: number,
+  appId?: string
+): string {
   const params = new URLSearchParams();
   if (filter !== "all") params.set("filter", filter);
+  if (appId) params.set("app", appId);
   if (page > 1) params.set("page", String(page));
   const query = params.toString();
   return query ? `/dashboard/security?${query}` : "/dashboard/security";
 }
 
+const EMPTY_COPY: Record<FilterKey, string> = {
+  all: "Sign-ins, deploys, and changes to your apps will show up here.",
+  auth: "No sign-in or security events match this filter.",
+  apps: "No app events match this filter.",
+  billing: "No billing events match this filter.",
+  account: "No account events match this filter.",
+};
+
 export default async function SecurityPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string; page?: string }>;
+  searchParams: Promise<{ filter?: string; page?: string; app?: string }>;
 }) {
   const session = await requireAuth();
   const params = await searchParams;
@@ -156,7 +170,16 @@ export default async function SecurityPage({
   const filter: FilterKey = FILTERS.some((f) => f.key === params.filter)
     ? (params.filter as FilterKey)
     : "all";
-  const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
+  const requestedPage = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
+
+  const ownedApps = await db
+    .select({ id: apps.id, name: apps.name })
+    .from(apps)
+    .where(eq(apps.userId, session.user.id));
+  const appId =
+    params.app && ownedApps.some((a) => a.id === params.app)
+      ? params.app
+      : undefined;
 
   const conditions: SQL[] = [eq(auditLogs.userId, session.user.id)];
   const prefixes = FILTER_PREFIXES[filter];
@@ -165,6 +188,9 @@ export default async function SecurityPage({
       ...prefixes.map((prefix) => like(auditLogs.action, `${prefix}%`))
     );
     if (prefixMatch) conditions.push(prefixMatch);
+  }
+  if (appId) {
+    conditions.push(eq(auditLogs.appId, appId));
   }
   const where = and(...conditions);
 
@@ -183,7 +209,7 @@ export default async function SecurityPage({
       .where(where)
       .orderBy(desc(auditLogs.createdAt), desc(auditLogs.id))
       .limit(PAGE_SIZE)
-      .offset((page - 1) * PAGE_SIZE),
+      .offset((requestedPage - 1) * PAGE_SIZE),
     db.select({ value: count() }).from(auditLogs).where(where),
     db
       .select({
@@ -203,6 +229,10 @@ export default async function SecurityPage({
 
   const total = totals?.value ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (requestedPage > pages) {
+    redirect(securityUrl(filter, pages, appId));
+  }
+  const page = requestedPage;
   const providers = [user?.githubId ? "GitHub" : null, user?.googleId ? "Google" : null]
     .filter(Boolean)
     .join(", ");
@@ -281,8 +311,8 @@ export default async function SecurityPage({
           {FILTERS.map((f) => (
             <Link
               key={f.key}
-              href={securityUrl(f.key, 1)}
-              aria-current={filter === f.key ? "true" : undefined}
+              href={securityUrl(f.key, 1, appId)}
+              aria-current={filter === f.key ? "page" : undefined}
               className={cn(
                 "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
                 filter === f.key
@@ -295,7 +325,39 @@ export default async function SecurityPage({
           ))}
         </div>
 
-        <Card className="card-elevated border-border">
+        {ownedApps.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={securityUrl(filter, 1)}
+              aria-current={!appId ? "page" : undefined}
+              className={cn(
+                "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                !appId
+                  ? "border-accent bg-accent/10 text-ink"
+                  : "border-border text-muted hover:bg-surface-2 hover:text-ink"
+              )}
+            >
+              All apps
+            </Link>
+            {ownedApps.map((app) => (
+              <Link
+                key={app.id}
+                href={securityUrl(filter, 1, app.id)}
+                aria-current={appId === app.id ? "page" : undefined}
+                className={cn(
+                  "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                  appId === app.id
+                    ? "border-accent bg-accent/10 text-ink"
+                    : "border-border text-muted hover:bg-surface-2 hover:text-ink"
+                )}
+              >
+                {app.name}
+              </Link>
+            ))}
+          </div>
+        )}
+
+        <Card className="card-elevated min-w-0 overflow-hidden border-border">
           {events.length === 0 ? (
             <CardContent className="flex flex-col items-center py-16 text-center">
               <ShieldCheck className="h-8 w-8 text-muted" aria-hidden />
@@ -303,7 +365,7 @@ export default async function SecurityPage({
                 No security activity yet
               </h3>
               <p className="mt-2 max-w-sm text-sm text-muted">
-                Sign-ins, deploys, and changes to your apps will show up here.
+                {EMPTY_COPY[filter]}
               </p>
             </CardContent>
           ) : (
@@ -320,9 +382,13 @@ export default async function SecurityPage({
                 {events.map((event) => {
                   const { label, icon: Icon, tone } = metaFor(event.action);
                   const detail = describeMetadata(event.metadata ?? {});
+                  const when = new Date(event.createdAt);
+                  const metaJson = event.metadata
+                    ? JSON.stringify(event.metadata, null, 2)
+                    : null;
                   return (
                     <TableRow key={event.id}>
-                      <TableCell>
+                      <TableCell className="max-w-[18rem] sm:max-w-md">
                         <div className="flex items-start gap-3">
                           <Icon
                             className={cn(
@@ -341,7 +407,17 @@ export default async function SecurityPage({
                               {label}
                             </p>
                             {detail && (
-                              <p className="truncate text-xs text-muted">{detail}</p>
+                              <p className="break-words text-xs text-muted">{detail}</p>
+                            )}
+                            {metaJson && metaJson !== "{}" && (
+                              <details className="mt-1">
+                                <summary className="cursor-pointer text-xs text-muted hover:text-ink">
+                                  Details
+                                </summary>
+                                <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md bg-surface-2 p-2 font-mono text-[11px] text-muted">
+                                  {metaJson}
+                                </pre>
+                              </details>
                             )}
                           </div>
                         </div>
@@ -349,11 +425,14 @@ export default async function SecurityPage({
                       <TableCell className="hidden text-sm text-muted md:table-cell">
                         {event.appName ?? "—"}
                       </TableCell>
-                      <TableCell className="hidden font-mono text-xs text-muted lg:table-cell">
+                      <TableCell className="hidden break-all font-mono text-xs text-muted lg:table-cell">
                         {event.ip ?? "—"}
                       </TableCell>
                       <TableCell className="text-right text-xs text-muted">
-                        {timeAgo(new Date(event.createdAt))}
+                        <span title={when.toISOString()}>{timeAgo(when)}</span>
+                        <p className="mt-0.5 text-[11px] text-muted/80">
+                          {when.toLocaleString()}
+                        </p>
                       </TableCell>
                     </TableRow>
                   );
@@ -371,7 +450,7 @@ export default async function SecurityPage({
             <div className="flex gap-2">
               {page > 1 ? (
                 <Link
-                  href={securityUrl(filter, page - 1)}
+                  href={securityUrl(filter, page - 1, appId)}
                   className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium text-ink hover:bg-surface-2"
                 >
                   ← Previous
@@ -379,7 +458,7 @@ export default async function SecurityPage({
               ) : null}
               {page < pages ? (
                 <Link
-                  href={securityUrl(filter, page + 1)}
+                  href={securityUrl(filter, page + 1, appId)}
                   className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium text-ink hover:bg-surface-2"
                 >
                   Next →

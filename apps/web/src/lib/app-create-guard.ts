@@ -2,8 +2,8 @@ import { randomUUID } from "crypto";
 import { eq, count, sql } from "drizzle-orm";
 import type { DokployClient } from "@hostingit/dokploy-client";
 import { db } from "@/db";
-import { apps } from "@/db/schema";
-import { getPlanLimit } from "@/lib/plans";
+import { apps, users } from "@/db/schema";
+import { getEffectiveAppLimit } from "@/lib/plans";
 import { appendUniqueSlugSuffix, slugifyAppName } from "@/lib/utils";
 import { getAppHostname } from "@/lib/dokploy";
 
@@ -38,7 +38,6 @@ function allocateSlug(name: string): string {
  */
 export async function reserveAppSlot(input: {
   userId: string;
-  plan: string;
   name: string;
   projectId: string;
   githubOwner: string;
@@ -50,13 +49,27 @@ export async function reserveAppSlot(input: {
       sql`SELECT 1 FROM users WHERE id = ${input.userId} FOR UPDATE`
     );
 
+    const [owner] = await tx
+      .select({
+        role: users.role,
+        email: users.email,
+        plan: users.plan,
+      })
+      .from(users)
+      .where(eq(users.id, input.userId))
+      .limit(1);
+
+    if (!owner) {
+      throw new Error("User not found");
+    }
+
     const [{ value: appCount }] = await tx
       .select({ value: count() })
       .from(apps)
       .where(eq(apps.userId, input.userId));
 
-    const limit = getPlanLimit(input.plan);
-    if (appCount >= limit) {
+    const limit = getEffectiveAppLimit(owner);
+    if (limit !== null && appCount >= limit) {
       throw new AppPlanLimitError(limit);
     }
 

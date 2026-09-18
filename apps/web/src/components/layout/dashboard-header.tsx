@@ -11,11 +11,17 @@ import { Avatar } from "@/components/ui/avatar";
 import { BrandLogo } from "@/components/brand-logo";
 import { SidebarNav } from "@/components/layout/dashboard-sidebar";
 
-function UserMenu() {
+function UserMenu({
+  name,
+  email,
+  avatarSrc,
+}: {
+  name: string | null;
+  email: string | null;
+  avatarSrc: string | null;
+}) {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
-  const name = session?.user?.name ?? null;
-  const email = session?.user?.email ?? null;
 
   return (
     <DropdownMenu.Root>
@@ -25,7 +31,12 @@ function UserMenu() {
           className="dash-account"
           aria-label="Account menu"
         >
-          <Avatar name={name} email={email} className="h-7 w-7" />
+          <Avatar
+            name={name}
+            email={email}
+            src={avatarSrc}
+            className="h-7 w-7"
+          />
           <ChevronDown className="h-3.5 w-3.5 opacity-60" aria-hidden />
         </button>
       </DropdownMenu.Trigger>
@@ -86,8 +97,22 @@ function UserMenu() {
   );
 }
 
-export function DashboardHeader() {
+export function DashboardHeader({
+  appCount,
+  appLimit,
+  avatarSrc,
+  name,
+  email,
+}: {
+  appCount: number;
+  appLimit: number | null;
+  avatarSrc: string | null;
+  name: string | null;
+  email: string | null;
+}) {
   const [open, setOpen] = useState(false);
+  const quota = appLimit === null ? `${appCount}/∞` : `${appCount}/${appLimit}`;
+  const canCreate = appLimit === null || appCount < appLimit;
 
   return (
     <header className="dash-header">
@@ -137,16 +162,28 @@ export function DashboardHeader() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/dashboard/apps/new"
-            className="home-dash"
-            aria-label="New App"
+          <span
+            className="hidden rounded-full border border-border bg-surface px-2.5 py-1 font-mono text-xs text-muted sm:inline"
+            title="Apps used"
           >
-            <Plus className="h-3.5 w-3.5 sm:mr-1" aria-hidden />
-            <span className="hidden sm:inline">New App</span>
-          </Link>
+            {quota} apps
+          </span>
+          {canCreate ? (
+            <Link
+              href="/dashboard/apps/new"
+              className="home-dash"
+              aria-label="New App"
+            >
+              <Plus className="h-3.5 w-3.5 sm:mr-1" aria-hidden />
+              <span className="hidden sm:inline">New App</span>
+            </Link>
+          ) : (
+            <span className="rounded-full border border-border bg-surface px-2.5 py-1 font-mono text-xs text-muted sm:hidden">
+              {quota}
+            </span>
+          )}
           <ThemeToggle className="home-theme-toggle" />
-          <UserMenu />
+          <UserMenu name={name} email={email} avatarSrc={avatarSrc} />
         </div>
       </div>
     </header>
