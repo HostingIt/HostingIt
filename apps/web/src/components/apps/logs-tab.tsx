@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PickerModal } from "@/components/ui/picker-modal";
+import { SelectDropdown } from "@/components/ui/select-dropdown";
 import { LogTerminal } from "@/components/apps/log-terminal";
 
 const TAIL_OPTIONS = [100, 200, 500, 1000];
@@ -108,8 +108,8 @@ export function LogsTab({ appId }: { appId: string }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <PickerModal
-          title="Log lines"
+        <SelectDropdown
+          label="Log lines"
           size="sm"
           value={String(tail)}
           options={TAIL_OPTIONS.map((n) => ({
@@ -118,8 +118,8 @@ export function LogsTab({ appId }: { appId: string }) {
           }))}
           onChange={(v) => setTail(Number(v))}
         />
-        <PickerModal
-          title="Time window"
+        <SelectDropdown
+          label="Time window"
           size="sm"
           value={since}
           options={SINCE_OPTIONS}

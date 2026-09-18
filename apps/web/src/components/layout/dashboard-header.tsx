@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { CreditCard, LogOut, Menu, Plus, Settings, Shield, X } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar } from "@/components/ui/avatar";
@@ -21,17 +22,12 @@ function UserMenu({
 }) {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
-  const [open, setOpen] = useState(false);
-
   const itemClass =
-    "flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink hover:bg-surface-2";
+    "flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink outline-none data-[highlighted]:bg-surface-2";
 
   return (
-    <Modal
-      open={open}
-      onOpenChange={setOpen}
-      title="Account"
-      trigger={
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
         <button type="button" className="dash-account" aria-label="Account">
           <Avatar
             name={name}
@@ -40,53 +36,52 @@ function UserMenu({
             className="h-7 w-7"
           />
         </button>
-      }
-    >
-      <div className="border-b border-border pb-3">
-        <p className="truncate text-sm font-medium text-ink">
-          {name ?? "Account"}
-        </p>
-        {email ? (
-          <p className="truncate text-xs text-muted">{email}</p>
-        ) : null}
-      </div>
-      <nav className="mt-3 space-y-1">
-        {isAdmin && (
-          <Link
-            href="/admin/users"
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="end"
+          sideOffset={8}
+          className="z-50 min-w-[12rem] rounded-xl border border-border bg-surface p-1 shadow-lg"
+        >
+          <div className="border-b border-border px-3 py-2">
+            <p className="truncate text-sm font-medium text-ink">
+              {name ?? "Account"}
+            </p>
+            {email ? (
+              <p className="truncate text-xs text-muted">{email}</p>
+            ) : null}
+          </div>
+          {isAdmin && (
+            <DropdownMenu.Item asChild>
+              <Link href="/admin/users" className={itemClass}>
+                <Shield className="h-4 w-4 text-muted" aria-hidden />
+                Admin
+              </Link>
+            </DropdownMenu.Item>
+          )}
+          <DropdownMenu.Item asChild>
+            <Link href="/dashboard/billing" className={itemClass}>
+              <CreditCard className="h-4 w-4 text-muted" aria-hidden />
+              Billing
+            </Link>
+          </DropdownMenu.Item>
+          <DropdownMenu.Item asChild>
+            <Link href="/dashboard/settings" className={itemClass}>
+              <Settings className="h-4 w-4 text-muted" aria-hidden />
+              Settings
+            </Link>
+          </DropdownMenu.Item>
+          <DropdownMenu.Separator className="my-1 h-px bg-border" />
+          <DropdownMenu.Item
             className={itemClass}
-            onClick={() => setOpen(false)}
+            onSelect={() => signOut({ callbackUrl: "/" })}
           >
-            <Shield className="h-4 w-4 text-muted" aria-hidden />
-            Admin
-          </Link>
-        )}
-        <Link
-          href="/dashboard/billing"
-          className={itemClass}
-          onClick={() => setOpen(false)}
-        >
-          <CreditCard className="h-4 w-4 text-muted" aria-hidden />
-          Billing
-        </Link>
-        <Link
-          href="/dashboard/settings"
-          className={itemClass}
-          onClick={() => setOpen(false)}
-        >
-          <Settings className="h-4 w-4 text-muted" aria-hidden />
-          Settings
-        </Link>
-        <button
-          type="button"
-          className={itemClass + " w-full"}
-          onClick={() => signOut({ callbackUrl: "/" })}
-        >
-          <LogOut className="h-4 w-4 text-muted" aria-hidden />
-          Sign out
-        </button>
-      </nav>
-    </Modal>
+            <LogOut className="h-4 w-4 text-muted" aria-hidden />
+            Sign out
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }
 

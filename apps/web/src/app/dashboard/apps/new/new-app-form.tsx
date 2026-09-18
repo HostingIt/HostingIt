@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
 import { FormSection } from "@/components/ui/form-section";
-import { PickerModal } from "@/components/ui/picker-modal";
+import { SelectDropdown } from "@/components/ui/select-dropdown";
 import {
   EnvVarEditor,
   emptyEnvRow,
@@ -193,8 +193,8 @@ export function NewAppForm({ repos }: NewAppFormProps) {
 
           <div className="space-y-2">
             <Label>Repository</Label>
-            <PickerModal
-              title="Repository"
+            <SelectDropdown
+              label="Repository"
               searchable
               placeholder="Select a repository"
               value={selectedRepo?.fullName ?? ""}
@@ -297,8 +297,8 @@ export function NewAppForm({ repos }: NewAppFormProps) {
 
                 <div className="space-y-2">
                   <Label>Build type</Label>
-                  <PickerModal
-                    title="Build type"
+                  <SelectDropdown
+                    label="Build type"
                     value={buildType}
                     onChange={setBuildType}
                     options={[
