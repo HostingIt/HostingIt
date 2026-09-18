@@ -9,8 +9,15 @@ import {
   integer,
   jsonb,
   index,
+  customType,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 export const planEnum = pgEnum("plan", ["free", "pro", "enterprise"]);
 export const accountStatusEnum = pgEnum("account_status", [
@@ -61,6 +68,9 @@ export const users = pgTable("users", {
   googleId: text("google_id"),
   totpSecret: text("totp_secret"),
   totpEnabled: boolean("totp_enabled").default(false).notNull(),
+  avatarData: bytea("avatar_data"),
+  avatarContentType: text("avatar_content_type"),
+  avatarUpdatedAt: timestamp("avatar_updated_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

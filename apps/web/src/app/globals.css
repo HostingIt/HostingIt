@@ -319,36 +319,18 @@ input:-webkit-autofill:focus {
 }
 
 .log-terminal {
-  background:
-    radial-gradient(120% 80% at 10% 0%, rgba(45, 212, 191, 0.08), transparent 45%),
-    radial-gradient(90% 60% at 100% 0%, rgba(56, 189, 248, 0.06), transparent 40%),
-    #070b12;
-  color: var(--terminal-text);
+  background: #0a0a0a;
+  color: #d4d4d4;
 }
 
 .log-terminal-chrome {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.04),
-    rgba(255, 255, 255, 0.015)
-  );
+  border-bottom: 1px solid #222;
+  background: #0a0a0a;
 }
 
 .log-terminal-body {
   min-height: 16rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 28%);
-}
-
-.log-terminal-grid {
-  background-image: linear-gradient(
-      rgba(255, 255, 255, 0.015) 1px,
-      transparent 1px
-    ),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
-  background-size: 100% 22px, 22px 100%;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 90%);
-  opacity: 0.55;
+  background: #0a0a0a;
 }
 
 /* Thin styled scrollbars for log panes and charts */

@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { getPlanConfig, normalizePlan } from "@/lib/plans";
+import {
+  canCreateApp,
+  formatAppQuota,
+  getEffectiveAppLimit,
+  getPlanConfig,
+  normalizePlan,
+} from "@/lib/plans";
 import { getAppPublicUrl } from "@/lib/dokploy";
 
 function timeAgo(date: Date | null): string {
@@ -46,17 +52,29 @@ export default async function AppsListPage() {
   const plan = normalizePlan(session.user.plan ?? "free");
   const planConfig = getPlanConfig(plan);
   const appCount = userApps.length;
+  const appLimit = getEffectiveAppLimit({
+    role: session.user.role,
+    email: session.user.email ?? "",
+    plan: session.user.plan ?? "free",
+  });
   const runningCount = userApps.filter((a) => a.status === "running").length;
+  const quota = formatAppQuota(appCount, appLimit);
 
   return (
     <div className="animate-fade-up">
       <PageHeader
         title="Apps"
-        description={`${planConfig.name} plan · ${appCount}/${planConfig.maxApps} apps · ${runningCount} running`}
+        description={`${planConfig.name} plan · ${quota} apps · ${runningCount} running`}
         action={
-          <Link href="/dashboard/apps/new">
-            <Button variant="accent" className="btn-glow">New App</Button>
-          </Link>
+          canCreateApp(appCount, appLimit) ? (
+            <Link href="/dashboard/apps/new">
+              <Button variant="accent" className="btn-glow">New App</Button>
+            </Link>
+          ) : (
+            <span className="rounded-full border border-border bg-surface px-3 py-1.5 font-mono text-sm text-muted">
+              {quota} apps
+            </span>
+          )
         }
       />
 

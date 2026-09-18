@@ -8,7 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { getPlanConfig, normalizePlan } from "@/lib/plans";
+import {
+  canCreateApp,
+  formatAppQuota,
+  getEffectiveAppLimit,
+  getPlanConfig,
+  normalizePlan,
+} from "@/lib/plans";
 import { getAppPublicUrl } from "@/lib/dokploy";
 import { deploymentStatusForBadge } from "@/lib/deployments";
 
@@ -59,6 +65,11 @@ export default async function DashboardOverviewPage() {
 
   const plan = normalizePlan(session.user.plan ?? "free");
   const planConfig = getPlanConfig(plan);
+  const appLimit = getEffectiveAppLimit({
+    role: session.user.role,
+    email: session.user.email ?? "",
+    plan: session.user.plan ?? "free",
+  });
   const runningCount = userApps.filter((a) => a.status === "running").length;
   const deployingCount = userApps.filter(
     (a) => a.status === "deploying" || a.status === "creating"
@@ -71,7 +82,7 @@ export default async function DashboardOverviewPage() {
     { label: "Deploying", value: deployingCount, icon: Rocket },
     {
       label: "Plan usage",
-      value: `${userApps.length}/${planConfig.maxApps}`,
+      value: formatAppQuota(userApps.length, appLimit),
       icon: Gauge,
     },
   ];
@@ -82,9 +93,15 @@ export default async function DashboardOverviewPage() {
         title="Dashboard"
         description={`Overview of your ${planConfig.name} workspace`}
         action={
-          <Link href="/dashboard/apps/new">
-            <Button variant="accent" className="btn-glow">New App</Button>
-          </Link>
+          canCreateApp(userApps.length, appLimit) ? (
+            <Link href="/dashboard/apps/new">
+              <Button variant="accent" className="btn-glow">New App</Button>
+            </Link>
+          ) : (
+            <span className="rounded-full border border-border bg-surface px-3 py-1.5 font-mono text-sm text-muted">
+              {formatAppQuota(userApps.length, appLimit)} apps
+            </span>
+          )
         }
       />
 

@@ -142,7 +142,6 @@ export async function POST(request: Request) {
 
     const { app: reservedApp, slug, subdomain } = await reserveAppSlot({
       userId: user.id,
-      plan: user.plan,
       name,
       projectId,
       githubOwner,

@@ -8,10 +8,14 @@ import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Avatar } from "@/components/ui/avatar";
+import { useRouter } from "next/navigation";
 
 export interface UserProfile {
   email: string;
   name: string | null;
+  avatarSrc: string;
+  hasCustomAvatar: boolean;
   totpEnabled: boolean;
   githubAppInstalled: boolean;
   githubAppConfigureUrl: string | null;
@@ -33,10 +37,13 @@ export function SettingsClient({
   linkError,
   flash,
 }: SettingsClientProps) {
+  const router = useRouter();
   const [deleteEmail, setDeleteEmail] = useState("");
   const [deleteTotp, setDeleteTotp] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+  const [avatarBusy, setAvatarBusy] = useState(false);
 
   async function connectProvider(provider: "github" | "google") {
     const { signIn } = await import("next-auth/react");
@@ -95,7 +102,93 @@ export function SettingsClient({
           <CardHeader>
             <CardTitle className="font-display text-lg">Account</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1 text-sm">
+          <CardContent className="space-y-4 text-sm">
+            <div className="flex items-center gap-4">
+              <Avatar
+                name={profile.name}
+                email={profile.email}
+                src={profile.avatarSrc}
+                className="h-14 w-14 text-base"
+              />
+              <div className="min-w-0 space-y-2">
+                <p className="text-xs text-muted">
+                  {profile.hasCustomAvatar
+                    ? "Custom photo"
+                    : "Gravatar (or identicon if you have none)"}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Label className="inline-flex cursor-pointer items-center">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="sr-only"
+                      disabled={avatarBusy}
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        if (!file) return;
+                        setAvatarBusy(true);
+                        setAvatarError("");
+                        try {
+                          const body = new FormData();
+                          body.set("file", file);
+                          const res = await fetch("/api/account/avatar", {
+                            method: "POST",
+                            body,
+                          });
+                          const data = (await res.json().catch(() => ({}))) as {
+                            error?: string;
+                          };
+                          if (!res.ok) {
+                            setAvatarError(data.error ?? "Could not upload photo");
+                            return;
+                          }
+                          router.refresh();
+                        } catch {
+                          setAvatarError("Could not upload photo");
+                        } finally {
+                          setAvatarBusy(false);
+                        }
+                      }}
+                    />
+                    <span className="inline-flex h-9 items-center rounded-md border border-border bg-surface px-3 text-sm font-medium text-ink hover:bg-surface-2">
+                      {avatarBusy ? "Saving…" : "Upload photo"}
+                    </span>
+                  </Label>
+                  {profile.hasCustomAvatar && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={avatarBusy}
+                      onClick={async () => {
+                        setAvatarBusy(true);
+                        setAvatarError("");
+                        try {
+                          const res = await fetch("/api/account/avatar", {
+                            method: "DELETE",
+                          });
+                          if (!res.ok) {
+                            setAvatarError("Could not remove photo");
+                            return;
+                          }
+                          router.refresh();
+                        } catch {
+                          setAvatarError("Could not remove photo");
+                        } finally {
+                          setAvatarBusy(false);
+                        }
+                      }}
+                    >
+                      Use Gravatar
+                    </Button>
+                  )}
+                </div>
+                {avatarError && (
+                  <p className="text-xs text-red-500">{avatarError}</p>
+                )}
+              </div>
+            </div>
             <p>
               <span className="text-muted">Email:</span>{" "}
               <span className="text-ink">{profile.email}</span>

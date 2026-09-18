@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/session";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { apps, users } from "@/db/schema";
+import { canCreateApp, formatAppQuota, getEffectiveAppLimit } from "@/lib/plans";
 import {
   getGithubAppConfigureUrl,
   isGithubAppConfigured,
@@ -34,10 +35,45 @@ export default async function NewAppPage() {
   const appConfigured = isGithubAppConfigured();
 
   const [user] = await db
-    .select({ githubInstallationId: users.githubInstallationId })
+    .select({
+      githubInstallationId: users.githubInstallationId,
+      role: users.role,
+      email: users.email,
+      plan: users.plan,
+    })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);
+
+  if (user) {
+    const [{ value: appCount }] = await db
+      .select({ value: count() })
+      .from(apps)
+      .where(eq(apps.userId, session.user.id));
+    const appLimit = getEffectiveAppLimit(user);
+    if (!canCreateApp(appCount, appLimit)) {
+      return (
+        <div className="animate-fade-up">
+          <Card className="border-dashed border-border bg-surface/50">
+            <CardHeader>
+              <CardTitle className="font-display text-xl">
+                App limit reached
+              </CardTitle>
+              <CardDescription>
+                You are using {formatAppQuota(appCount, appLimit)} apps on your
+                current plan. Delete an app or upgrade to deploy another.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild>
+                <Link href="/dashboard/apps">View apps</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+  }
 
   if (!user?.githubInstallationId) {
     return <ConnectGithubPrompt appConfigured={appConfigured} />;

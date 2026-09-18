@@ -55,16 +55,11 @@ export function LogTerminal({
   return (
     <div
       className={cn(
-        "log-terminal overflow-hidden rounded-xl border border-black/30 shadow-[0_20px_50px_-28px_rgba(0,0,0,0.65)] dark:border-white/10",
+        "log-terminal overflow-hidden rounded-md border border-black/60",
         className
       )}
     >
-      <div className="log-terminal-chrome flex items-center gap-3 px-4 py-2.5">
-        <div className="flex items-center gap-1.5" aria-hidden>
-          <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
-        </div>
+      <div className="log-terminal-chrome flex items-center gap-3 px-4 py-2">
         <div className="min-w-0 flex-1">
           <p className="truncate font-mono text-[11px] font-medium tracking-wide text-white/70">
             {title}
@@ -97,7 +92,6 @@ export function LogTerminal({
           bodyClassName
         )}
       >
-        <div className="log-terminal-grid pointer-events-none absolute inset-0" aria-hidden />
         {showEmpty ? (
           <p className="relative px-4 py-10 text-center font-mono text-xs text-white/35">
             {emptyMessage}
