@@ -3,10 +3,13 @@ import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { getSession } from "@/lib/session";
 import { db } from "@/db";
-import { apps } from "@/db/schema";
+import { apps, users } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
-import { STATIC_CONTAINER_PORT } from "@/lib/dokploy-domain";
+import { fetchDockerfileText } from "@/lib/dokploy-domain";
+import { resolveContainerPort } from "@/lib/container-port";
+import { parseEnvString } from "@/lib/env-vars";
 import { canUseCustomDomain } from "@/lib/plans";
+import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
 const HOSTNAME_RE =
   /^(?=.{1,253}$)(?!-)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.(?!-)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
@@ -59,10 +62,29 @@ export async function POST(
   try {
     const dokploy = getDokployClient();
     const remote = await dokploy.getApplication(app.dokployAppId);
+    const [owner] = await db
+      .select({ installationId: users.githubInstallationId })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+    const dockerfileText = await fetchDockerfileText({
+      installationId: owner?.installationId,
+      owner: app.githubOwner,
+      repo: app.githubRepo,
+      branch: app.githubBranch,
+      buildPath: remote.customGitBuildPath ?? remote.buildPath ?? "/",
+      dockerfile: remote.dockerfile,
+      dockerContextPath: remote.dockerContextPath,
+    });
+    const containerPort = resolveContainerPort({
+      buildType: remote.buildType,
+      env: parseEnvString(remote.env),
+      dockerfileText,
+    });
     const domain = await dokploy.createDomain({
       host: parsed.data.domain,
       applicationId: app.dokployAppId,
-      port: remote.buildType === "static" ? STATIC_CONTAINER_PORT : undefined,
+      port: containerPort,
     });
 
     await db
@@ -74,6 +96,14 @@ export async function POST(
         updatedAt: new Date(),
       })
       .where(eq(apps.id, app.id));
+
+    recordAuditEvent({
+      userId: session.user.id,
+      appId: app.id,
+      action: AUDIT_ACTIONS.appDomainUpdate,
+      request,
+      metadata: { domain: parsed.data.domain },
+    });
 
     return NextResponse.json({ success: true, domain: parsed.data.domain });
   } catch (error) {

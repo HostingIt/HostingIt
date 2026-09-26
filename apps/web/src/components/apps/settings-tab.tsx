@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import type { App } from "@/db/schema";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { SelectDropdown } from "@/components/ui/select-dropdown";
 
 const BUILD_TYPES = [
   { value: "nixpacks", label: "Auto-detect (Nixpacks)" },
@@ -26,6 +28,7 @@ type Settings = {
   dockerBuildStage: string;
   publishDirectory: string;
   isStaticSpa: boolean;
+  containerPort: number;
 };
 
 interface SettingsTabProps {
@@ -42,6 +45,7 @@ export function SettingsTab({ app, onChanged }: SettingsTabProps) {
   const [customDomain, setCustomDomain] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -59,6 +63,7 @@ export function SettingsTab({ app, onChanged }: SettingsTabProps) {
           dockerBuildStage: data.dockerBuildStage ?? "",
           publishDirectory: data.publishDirectory ?? "dist",
           isStaticSpa: data.isStaticSpa ?? false,
+          containerPort: data.containerPort ?? 3000,
         });
       }
     } finally {
@@ -111,8 +116,8 @@ export function SettingsTab({ app, onChanged }: SettingsTabProps) {
   }
 
   async function handleDelete() {
-    if (!confirm("Delete this app? This cannot be undone.")) return;
     setSaving(true);
+    setConfirmDelete(false);
     await fetch(`/api/apps/${app.id}`, { method: "DELETE" });
     router.push("/dashboard/apps");
   }
@@ -193,19 +198,34 @@ export function SettingsTab({ app, onChanged }: SettingsTabProps) {
             folder you want online. Use Dockerfile if auto-detect fails.
           </p>
           <div className="space-y-2">
-            <Label htmlFor="buildType">Build type</Label>
-            <select
-              id="buildType"
-              className="field-select"
+            <Label htmlFor="containerPort">Container port</Label>
+            <Input
+              id="containerPort"
+              type="number"
+              min={1}
+              max={65535}
+              value={settings.containerPort}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  containerPort: Number.parseInt(e.target.value, 10) || 3000,
+                })
+              }
+            />
+            <p className="text-xs text-muted">
+              Traefik routes your domain to this port inside the container.
+              Detected from <span className="font-mono">PORT</span> or{" "}
+              <span className="font-mono">EXPOSE</span> when possible.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label>Build type</Label>
+            <SelectDropdown
+              label="Build type"
               value={settings.buildType}
-              onChange={(e) => setSettings({ ...settings, buildType: e.target.value })}
-            >
-              {BUILD_TYPES.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              options={BUILD_TYPES}
+              onChange={(buildType) => setSettings({ ...settings, buildType })}
+            />
           </div>
 
           {settings.buildType === "dockerfile" && (
@@ -306,11 +326,25 @@ export function SettingsTab({ app, onChanged }: SettingsTabProps) {
           <p className="mb-3 text-sm text-muted">
             Permanently delete this app and its deployments.
           </p>
-          <Button variant="destructive" onClick={handleDelete} disabled={saving}>
+          <Button
+            variant="destructive"
+            onClick={() => setConfirmDelete(true)}
+            disabled={saving}
+          >
             Delete app
           </Button>
         </CardContent>
       </Card>
+
+      <ConfirmModal
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Delete this app?"
+        description="This permanently removes the app and its deployments. It cannot be undone."
+        confirmLabel="Delete app"
+        busy={saving}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

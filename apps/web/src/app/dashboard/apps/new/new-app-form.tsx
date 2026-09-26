@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
 import { FormSection } from "@/components/ui/form-section";
+import { SelectDropdown } from "@/components/ui/select-dropdown";
 import {
   EnvVarEditor,
   emptyEnvRow,
@@ -112,7 +113,10 @@ export function NewAppForm({ repos }: NewAppFormProps) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedRepo) return;
+    if (!selectedRepo) {
+      setError("Select a repository");
+      return;
+    }
 
     if (!isValidAppNameForSlug(name)) {
       setError(
@@ -189,23 +193,22 @@ export function NewAppForm({ repos }: NewAppFormProps) {
 
           <div className="space-y-2">
             <Label>Repository</Label>
-            <select
-              className="field-select"
+            <SelectDropdown
+              label="Repository"
+              searchable
+              placeholder="Select a repository"
               value={selectedRepo?.fullName ?? ""}
-              onChange={(e) => {
-                const repo = repos.find((r) => r.fullName === e.target.value);
+              options={repos.map((repo) => ({
+                value: repo.fullName,
+                label: repo.fullName,
+                hint: repo.private ? "private" : undefined,
+              }))}
+              onChange={(fullName) => {
+                const repo = repos.find((r) => r.fullName === fullName);
                 setSelectedRepo(repo ?? null);
                 if (repo) setBranch(repo.defaultBranch);
               }}
-              required
-            >
-              <option value="">Select a repository</option>
-              {repos.map((repo) => (
-                <option key={repo.id} value={repo.fullName}>
-                  {repo.fullName} {repo.private ? "(private)" : ""}
-                </option>
-              ))}
-            </select>
+            />
             <p className="text-xs text-muted">
               Repos you granted the HostingIt GitHub App access to.
             </p>
@@ -293,18 +296,18 @@ export function NewAppForm({ repos }: NewAppFormProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="buildType">Build type</Label>
-                  <select
-                    id="buildType"
-                    className="field-select"
+                  <Label>Build type</Label>
+                  <SelectDropdown
+                    label="Build type"
                     value={buildType}
-                    onChange={(e) => setBuildType(e.target.value)}
-                  >
-                    <option value="nixpacks">Auto-detect (Nixpacks)</option>
-                    <option value="dockerfile">Dockerfile</option>
-                    <option value="static">Static site</option>
-                    <option value="railpack">Railpack</option>
-                  </select>
+                    onChange={setBuildType}
+                    options={[
+                      { value: "nixpacks", label: "Auto-detect (Nixpacks)" },
+                      { value: "dockerfile", label: "Dockerfile" },
+                      { value: "static", label: "Static site" },
+                      { value: "railpack", label: "Railpack" },
+                    ]}
+                  />
                 </div>
 
                 {buildType === "dockerfile" && (

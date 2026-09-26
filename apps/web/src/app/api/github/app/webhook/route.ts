@@ -6,8 +6,9 @@ import { verifyGithubWebhookSignature } from "@/lib/github-app";
 import { syncDokployGitSource } from "@/lib/deploy-git";
 import { getDokployClient } from "@/lib/dokploy";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
-import { ensureStaticDomainPort } from "@/lib/dokploy-domain";
+import { syncAppDomainPort } from "@/lib/dokploy-domain";
 import { syncDeploymentsFromDokploy } from "@/lib/deployments";
+import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
@@ -27,10 +28,20 @@ export async function POST(request: Request) {
       const installationId = String(installation.id);
 
       if (action === "deleted" || action === "suspend") {
-        await db
+        const affected = await db
           .update(users)
           .set({ githubInstallationId: null, updatedAt: new Date() })
-          .where(eq(users.githubInstallationId, installationId));
+          .where(eq(users.githubInstallationId, installationId))
+          .returning({ id: users.id });
+
+        for (const user of affected) {
+          recordAuditEvent({
+            userId: user.id,
+            action: AUDIT_ACTIONS.githubUninstall,
+            request,
+            metadata: { installationId, action },
+          });
+        }
       }
     }
 
@@ -87,7 +98,14 @@ export async function POST(request: Request) {
             branch: row.app.githubBranch,
             buildPath: remote.customGitBuildPath ?? remote.buildPath ?? "/",
           });
-          await ensureStaticDomainPort(dokploy, row.app, remote.buildType);
+          await syncAppDomainPort(dokploy, row.app, {
+            buildType: remote.buildType,
+            envRaw: remote.env,
+            dockerfile: remote.dockerfile,
+            dockerContextPath: remote.dockerContextPath,
+            buildPath: remote.customGitBuildPath ?? remote.buildPath ?? "/",
+            installationId: row.installationId,
+          });
           await dokploy.redeploy(row.app.dokployAppId);
           await db
             .update(apps)

@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -26,9 +27,11 @@ interface AppMetrics {
 }
 
 export function MetricsClient() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [apps, setApps] = useState<AppMetrics[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<string | "all">("all");
 
   const load = useCallback(async () => {
     try {
@@ -51,61 +54,56 @@ export function MetricsClient() {
     };
   }, [load]);
 
-  const filtered = filter === "all" ? apps : apps.filter((a) => a.id === filter);
+  const appParam = searchParams.get("app");
+  const selectedId = useMemo(() => {
+    if (appParam === "all") return "all";
+    if (appParam && apps.some((a) => a.id === appParam)) return appParam;
+    return apps[0]?.id ?? "all";
+  }, [appParam, apps]);
+
+  const filtered =
+    selectedId === "all" ? apps : apps.filter((a) => a.id === selectedId);
 
   const peakCpu = Math.max(
     0,
-    ...apps.map((a) => latestMetricValue(a.metrics?.cpu) ?? 0)
+    ...filtered.map((a) => latestMetricValue(a.metrics?.cpu) ?? 0)
   );
   const peakMem = Math.max(
     0,
-    ...apps.map((a) => latestMetricValue(a.metrics?.memory) ?? 0)
+    ...filtered.map((a) => latestMetricValue(a.metrics?.memory) ?? 0)
   );
 
-  const hasAnyMetrics = apps.some(
+  const hasAnyMetrics = filtered.some(
     (a) => a.metrics?.cpu?.length || a.metrics?.memory?.length
   );
+
+  function setApp(next: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === "all") params.set("app", "all");
+    else params.set("app", next);
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
 
   return (
     <div className="animate-fade-up space-y-8">
       <PageHeader
         title="Metrics"
-        description="CPU, memory, and network usage across your apps"
+        description={
+          selectedId === "all"
+            ? "CPU, memory, and network usage across your apps"
+            : "CPU, memory, and network usage for this app"
+        }
       />
 
-      {!loading && apps.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Card className="card-elevated border-border">
-            <CardContent className="p-5">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted">
-                Peak CPU (all apps)
-              </p>
-              <p className="mt-1 font-display text-2xl font-bold text-ink">
-                {peakCpu > 0 ? `${peakCpu.toFixed(1)}%` : "N/A"}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="card-elevated border-border">
-            <CardContent className="p-5">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted">
-                Peak memory (all apps)
-              </p>
-              <p className="mt-1 font-display text-2xl font-bold text-ink">
-                {peakMem > 0 ? `${peakMem.toFixed(1)}%` : "N/A"}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {apps.length > 0 && (
+      {apps.length > 1 && (
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => setFilter("all")}
+            onClick={() => setApp("all")}
             className={cn(
               "rounded-full border px-3 py-1 text-sm font-medium transition-colors",
-              filter === "all"
+              selectedId === "all"
                 ? "border-accent bg-accent/15 text-ink"
                 : "border-border text-muted hover:text-ink"
             )}
@@ -116,10 +114,10 @@ export function MetricsClient() {
             <button
               key={app.id}
               type="button"
-              onClick={() => setFilter(app.id)}
+              onClick={() => setApp(app.id)}
               className={cn(
                 "rounded-full border px-3 py-1 text-sm font-medium transition-colors",
-                filter === app.id
+                selectedId === app.id
                   ? "border-accent bg-accent/15 text-ink"
                   : "border-border text-muted hover:text-ink"
               )}
@@ -127,6 +125,31 @@ export function MetricsClient() {
               {app.name}
             </button>
           ))}
+        </div>
+      )}
+
+      {!loading && filtered.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card className="card-elevated border-border">
+            <CardContent className="p-5">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted">
+                Peak CPU
+              </p>
+              <p className="mt-1 font-display text-2xl font-bold text-ink">
+                {peakCpu > 0 ? `${peakCpu.toFixed(1)}%` : "N/A"}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="card-elevated border-border">
+            <CardContent className="p-5">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted">
+                Peak memory
+              </p>
+              <p className="mt-1 font-display text-2xl font-bold text-ink">
+                {peakMem > 0 ? `${peakMem.toFixed(1)}%` : "N/A"}
+              </p>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -179,7 +202,7 @@ export function MetricsClient() {
                     color="#14b8a6"
                     unit="%"
                     gradientId={`cpu-${app.id}`}
-                    compact
+                    compact={selectedId === "all"}
                   />
                   <MetricChart
                     title="Memory"
@@ -187,7 +210,7 @@ export function MetricsClient() {
                     color="#8b5cf6"
                     unit="%"
                     gradientId={`mem-${app.id}`}
-                    compact
+                    compact={selectedId === "all"}
                   />
                   <MetricChart
                     title="Network"
@@ -195,7 +218,7 @@ export function MetricsClient() {
                     color="#0ea5e9"
                     unit="KB/s"
                     gradientId={`net-${app.id}`}
-                    compact
+                    compact={selectedId === "all"}
                   />
                   <MetricChart
                     title="Disk"
@@ -203,7 +226,7 @@ export function MetricsClient() {
                     color="#f59e0b"
                     unit="%"
                     gradientId={`disk-${app.id}`}
-                    compact
+                    compact={selectedId === "all"}
                   />
                 </div>
               </CardContent>

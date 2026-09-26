@@ -6,12 +6,13 @@ import { apps, users } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
 import { syncDokployGitSource } from "@/lib/deploy-git";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
-import { ensureStaticDomainPort } from "@/lib/dokploy-domain";
+import { syncAppDomainPort } from "@/lib/dokploy-domain";
 import { syncDeploymentsFromDokploy } from "@/lib/deployments";
 import { toClientError } from "@/lib/safe-error";
+import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
@@ -65,7 +66,14 @@ export async function POST(
       buildPath: remote.customGitBuildPath ?? remote.buildPath ?? "/",
     });
 
-    await ensureStaticDomainPort(dokploy, row.app, remote.buildType);
+    await syncAppDomainPort(dokploy, row.app, {
+      buildType: remote.buildType,
+      envRaw: remote.env,
+      dockerfile: remote.dockerfile,
+      dockerContextPath: remote.dockerContextPath,
+      buildPath: remote.customGitBuildPath ?? remote.buildPath ?? "/",
+      installationId: row.installationId,
+    });
     await dokploy.redeploy(row.app.dokployAppId);
 
     await db
@@ -74,6 +82,14 @@ export async function POST(
       .where(eq(apps.id, row.app.id));
 
     await syncDeploymentsFromDokploy(dokploy, row.app.id, row.app.dokployAppId);
+
+    recordAuditEvent({
+      userId: session.user.id,
+      appId: row.app.id,
+      action: AUDIT_ACTIONS.appRedeploy,
+      request,
+      metadata: { repo: `${row.app.githubOwner}/${row.app.githubRepo}`, branch: row.app.githubBranch },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

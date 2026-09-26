@@ -3,15 +3,16 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getSession } from "@/lib/session";
 import { db } from "@/db";
-import { apps } from "@/db/schema";
+import { apps, users } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
 import { getOwnedApp } from "@/lib/app-access";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
-import { ensureStaticDomainPort } from "@/lib/dokploy-domain";
+import { syncAppDomainPort } from "@/lib/dokploy-domain";
 import { parseEnvString, serializeEnvVars } from "@/lib/env-vars";
 import { envVarListSchema } from "@/lib/env-var-schema";
 import { mergeEnvVarUpdates, toMaskedEnvResponse } from "@/lib/env-secrets";
 import { toClientError } from "@/lib/safe-error";
+import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
 export async function GET(
   _request: Request,
@@ -103,8 +104,22 @@ export async function PUT(
       createEnvFile: true,
     });
 
+    const [owner] = await db
+      .select({ installationId: users.githubInstallationId })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    await syncAppDomainPort(dokploy, app, {
+      buildType: remote.buildType,
+      envRaw: serializeEnvVars(env) || null,
+      dockerfile: remote.dockerfile,
+      dockerContextPath: remote.dockerContextPath,
+      buildPath: remote.customGitBuildPath ?? remote.buildPath ?? "/",
+      installationId: owner?.installationId,
+    });
+
     if (parsed.data.redeploy) {
-      await ensureStaticDomainPort(dokploy, app, remote.buildType);
       await applyPlanResourceLimits(
         dokploy,
         app.dokployAppId,
@@ -116,6 +131,19 @@ export async function PUT(
         .set({ status: "deploying", updatedAt: new Date() })
         .where(eq(apps.id, app.id));
     }
+
+    recordAuditEvent({
+      userId: session.user.id,
+      appId: app.id,
+      action: AUDIT_ACTIONS.appEnvUpdate,
+      request,
+      metadata: {
+        envKeys: env.filter((row) => row.key.trim()).map((row) => row.key),
+        buildSecretsChanged: parsed.data.buildSecrets !== undefined,
+        buildArgsChanged: parsed.data.buildArgs !== undefined,
+        redeploy: parsed.data.redeploy === true,
+      },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -113,6 +113,8 @@ input:-webkit-autofill:focus {
   display: flex;
   height: 2.5rem;
   width: 100%;
+  align-items: center;
+  justify-content: flex-start;
   appearance: none;
   cursor: pointer;
   border-radius: 0.375rem;
@@ -124,8 +126,12 @@ input:-webkit-autofill:focus {
   background-size: 0.875rem;
   padding: 0 2.25rem 0 0.75rem;
   font-size: 0.875rem;
+  line-height: 1.25rem;
   color: var(--foreground);
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition:
     border-color 150ms ease,
     box-shadow 150ms ease;
@@ -319,36 +325,18 @@ input:-webkit-autofill:focus {
 }
 
 .log-terminal {
-  background:
-    radial-gradient(120% 80% at 10% 0%, rgba(45, 212, 191, 0.08), transparent 45%),
-    radial-gradient(90% 60% at 100% 0%, rgba(56, 189, 248, 0.06), transparent 40%),
-    #070b12;
-  color: var(--terminal-text);
+  background: #0a0a0a;
+  color: #d4d4d4;
 }
 
 .log-terminal-chrome {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.04),
-    rgba(255, 255, 255, 0.015)
-  );
+  border-bottom: 1px solid #222;
+  background: #0a0a0a;
 }
 
 .log-terminal-body {
   min-height: 16rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 28%);
-}
-
-.log-terminal-grid {
-  background-image: linear-gradient(
-      rgba(255, 255, 255, 0.015) 1px,
-      transparent 1px
-    ),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
-  background-size: 100% 22px, 22px 100%;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 90%);
-  opacity: 0.55;
+  background: #0a0a0a;
 }
 
 /* Thin styled scrollbars for log panes and charts */
@@ -2124,96 +2112,96 @@ input:-webkit-autofill:focus {
 
 .dash {
   display: flex;
+  flex-direction: row;
   height: 100svh;
-  flex-direction: column;
+  min-height: 0;
   overflow: hidden;
   background: var(--background);
   color: var(--foreground);
 }
 
-.dash-nav {
+.dash-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dash-header {
   z-index: 40;
+  flex-shrink: 0;
   border-bottom: 1px solid var(--border);
   background: color-mix(in oklab, var(--background) 78%, transparent);
   backdrop-filter: blur(16px);
 }
 
-.dash-nav-inner {
+.dash-sidebar {
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.dash-side-link {
   display: flex;
-  height: 3.75rem;
   align-items: center;
-  gap: 0.75rem;
-}
-
-@media (min-width: 768px) {
-  .dash-nav-inner {
-    height: 4.25rem;
-  }
-}
-
-.dash-nav-links {
-  display: none;
-  flex: 1;
-  align-items: center;
-  gap: 0.15rem;
-}
-
-@media (min-width: 768px) {
-  .dash-nav-links {
-    display: flex;
-  }
-}
-
-.dash-nav-link {
-  padding: 0.45rem 0.75rem;
+  gap: 0.6rem;
+  border-radius: 0.625rem;
+  padding: 0.55rem 0.75rem;
   font-size: 0.9rem;
   font-weight: 500;
   color: var(--muted);
-  border-radius: 999px;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
 }
 
-.dash-nav-link:hover {
+.dash-side-link:hover {
   color: var(--ink);
+  background: color-mix(in oklab, var(--ink) 5%, transparent);
 }
 
-.dash-nav-link.is-active {
-  background: var(--surface);
+.dash-side-link.is-active {
   color: var(--ink);
+  background: color-mix(in oklab, var(--accent) 12%, transparent);
 }
 
-.dash-nav-actions {
-  display: flex;
-  margin-left: auto;
+.dash-side-link.is-active svg {
+  color: var(--accent);
+}
+
+.dash-menu-btn {
+  display: inline-flex;
+  height: 2.25rem;
+  width: 2.25rem;
   align-items: center;
-  gap: 0.45rem;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
 }
 
-.dash-new {
-  display: none;
-}
-
-@media (min-width: 768px) {
-  .dash-new {
-    display: inline-flex;
+@media (min-width: 1024px) {
+  .dash-menu-btn {
+    display: none;
   }
 }
 
 .dash-account {
   display: inline-flex;
-  height: 2.15rem;
+  height: 2.25rem;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.2rem;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: transparent;
-  padding: 0 0.75rem;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--ink);
+  background: var(--surface);
+  padding: 0.125rem 0.5rem 0.125rem 0.125rem;
 }
 
 .dash-body {
   flex: 1;
+  min-height: 0;
   overflow: auto;
 }
 

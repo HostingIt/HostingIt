@@ -15,6 +15,7 @@ import {
   clearRateLimit,
   getClientIp,
 } from "@/lib/rate-limit";
+import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
 const verifySchema = z.object({
   code: z.string().length(6),
@@ -68,6 +69,11 @@ export async function POST(request: Request) {
   }
 
   if (!verifyTotpCode(secret, parsed.data.code)) {
+    recordAuditEvent({
+      userId: session.user.id,
+      action: AUDIT_ACTIONS.authTwoFactorVerifyFailed,
+      request,
+    });
     return NextResponse.json({ error: "Invalid code" }, { status: 401 });
   }
 

@@ -7,9 +7,14 @@ import { apps, users } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
 import { getOwnedApp } from "@/lib/app-access";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
-import { ensureStaticDomainPort } from "@/lib/dokploy-domain";
+import {
+  fetchDockerfileText,
+  resolveAppContainerPort,
+  syncAppDomainPort,
+} from "@/lib/dokploy-domain";
 import { syncDokployGitSource } from "@/lib/deploy-git";
 import { toClientError } from "@/lib/safe-error";
+import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
 const buildTypes = [
   "nixpacks",
@@ -38,6 +43,25 @@ export async function GET(
   try {
     const dokploy = getDokployClient();
     const remote = await dokploy.getApplication(app.dokployAppId);
+    const [owner] = await db
+      .select({ installationId: users.githubInstallationId })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+    const dockerfileText = await fetchDockerfileText({
+      installationId: owner?.installationId,
+      owner: app.githubOwner,
+      repo: app.githubRepo,
+      branch: app.githubBranch,
+      buildPath: remote.customGitBuildPath ?? remote.buildPath ?? "/",
+      dockerfile: remote.dockerfile,
+      dockerContextPath: remote.dockerContextPath,
+    });
+    const containerPort = await resolveAppContainerPort({
+      buildType: remote.buildType,
+      envRaw: remote.env,
+      dockerfileText,
+    });
 
     return NextResponse.json({
       githubBranch: app.githubBranch,
@@ -51,6 +75,7 @@ export async function GET(
       dockerBuildStage: remote.dockerBuildStage ?? "",
       publishDirectory: remote.publishDirectory ?? "dist",
       isStaticSpa: remote.isStaticSpa ?? false,
+      containerPort,
       applicationStatus: remote.applicationStatus ?? app.status,
     });
   } catch (error) {
@@ -72,6 +97,7 @@ const updateSettingsSchema = z.object({
   dockerBuildStage: z.string().max(256).optional(),
   publishDirectory: z.string().max(256).optional(),
   isStaticSpa: z.boolean().optional(),
+  containerPort: z.number().int().min(1).max(65535).optional(),
   redeploy: z.boolean().optional(),
 });
 
@@ -163,11 +189,34 @@ export async function PATCH(
       });
     }
 
+    if (data.containerPort !== undefined || data.redeploy) {
+      const remote =
+        data.buildType || data.redeploy
+          ? await dokploy.getApplication(app.dokployAppId)
+          : null;
+      const buildType = data.buildType ?? remote?.buildType;
+      await syncAppDomainPort(dokploy, app, {
+        buildType,
+        envRaw: remote?.env,
+        dockerfile: data.dockerfile ?? remote?.dockerfile,
+        dockerContextPath: data.dockerContextPath ?? remote?.dockerContextPath,
+        buildPath:
+          data.buildPath ??
+          remote?.customGitBuildPath ??
+          remote?.buildPath ??
+          "/",
+        installationId: (
+          await db
+            .select({ installationId: users.githubInstallationId })
+            .from(users)
+            .where(eq(users.id, session.user.id))
+            .limit(1)
+        )[0]?.installationId,
+        portOverride: data.containerPort,
+      });
+    }
+
     if (data.redeploy) {
-      const buildType =
-        data.buildType ??
-        (await dokploy.getApplication(app.dokployAppId)).buildType;
-      await ensureStaticDomainPort(dokploy, app, buildType);
       await applyPlanResourceLimits(
         dokploy,
         app.dokployAppId,
@@ -179,6 +228,19 @@ export async function PATCH(
         .set({ status: "deploying", updatedAt: new Date() })
         .where(eq(apps.id, app.id));
     }
+
+    recordAuditEvent({
+      userId: session.user.id,
+      appId: app.id,
+      action: AUDIT_ACTIONS.appSettingsUpdate,
+      request,
+      metadata: {
+        fields: Object.keys(data),
+        branch: data.githubBranch,
+        buildType: data.buildType,
+        redeploy: data.redeploy === true,
+      },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

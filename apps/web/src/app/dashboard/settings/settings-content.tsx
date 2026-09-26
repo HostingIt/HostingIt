@@ -7,6 +7,7 @@ import {
   isGithubAppConfigured,
 } from "@/lib/github-app";
 import { SettingsClient } from "./settings-client";
+import { resolveAvatarSrc } from "@/lib/avatar";
 
 export default async function SettingsPageContent({
   searchParams,
@@ -24,6 +25,7 @@ export default async function SettingsPageContent({
       googleId: users.googleId,
       totpEnabled: users.totpEnabled,
       githubInstallationId: users.githubInstallationId,
+      avatarUpdatedAt: users.avatarUpdatedAt,
     })
     .from(users)
     .where(eq(users.id, session.user.id))
@@ -56,6 +58,11 @@ export default async function SettingsPageContent({
       profile={{
         email: user.email,
         name: user.name,
+        avatarSrc: resolveAvatarSrc({
+          email: user.email,
+          avatarUpdatedAt: user.avatarUpdatedAt,
+        }),
+        hasCustomAvatar: Boolean(user.avatarUpdatedAt),
         totpEnabled: user.totpEnabled,
         githubAppInstalled: !!user.githubInstallationId,
         githubAppConfigureUrl: user.githubInstallationId

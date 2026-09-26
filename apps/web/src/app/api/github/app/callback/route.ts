@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { verifyInstallState } from "@/lib/github-app";
+import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
 function appUrl(path: string): URL {
   const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -60,6 +61,13 @@ export async function GET(request: Request) {
       updatedAt: new Date(),
     })
     .where(eq(users.id, stateUserId));
+
+  recordAuditEvent({
+    userId: stateUserId,
+    action: AUDIT_ACTIONS.githubInstall,
+    request,
+    metadata: { installationId },
+  });
 
   const redirectTo = appUrl("/dashboard/apps/new");
   redirectTo.searchParams.set("github_app", "installed");

@@ -13,7 +13,10 @@ import { envVarListSchema } from "@/lib/env-var-schema";
 import { syncDokployGitSource } from "@/lib/deploy-git";
 import { ensureUserDokployEnvironment } from "@/lib/dokploy-user";
 import { applyPlanResourceLimits } from "@/lib/app-resources";
-import { STATIC_CONTAINER_PORT } from "@/lib/dokploy-domain";
+import {
+  fetchDockerfileText,
+} from "@/lib/dokploy-domain";
+import { resolveContainerPort } from "@/lib/container-port";
 import { toClientError } from "@/lib/safe-error";
 import { InvalidAppSlugError, isValidAppNameForSlug } from "@/lib/utils";
 import {
@@ -24,6 +27,7 @@ import {
   type DokployProvisionResources,
 } from "@/lib/app-create-guard";
 import { syncDeploymentsFromDokploy } from "@/lib/deployments";
+import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
 const createAppSchema = z.object({
   name: z
@@ -141,7 +145,6 @@ export async function POST(request: Request) {
 
     const { app: reservedApp, slug, subdomain } = await reserveAppSlot({
       userId: user.id,
-      plan: user.plan,
       name,
       projectId,
       githubOwner,
@@ -214,10 +217,25 @@ export async function POST(request: Request) {
       });
     }
 
+    const dockerfileText = await fetchDockerfileText({
+      installationId: user.githubInstallationId,
+      owner: githubOwner,
+      repo: githubRepo,
+      branch: githubBranch,
+      buildPath,
+      dockerfile,
+      dockerContextPath,
+    });
+    const containerPort = resolveContainerPort({
+      buildType,
+      env: envPayload,
+      dockerfileText,
+    });
+
     const domain = await dokploy.createDomain({
       host: subdomain,
       applicationId,
-      port: buildType === "static" ? STATIC_CONTAINER_PORT : undefined,
+      port: containerPort,
     });
 
     const domainId =
@@ -253,6 +271,20 @@ export async function POST(request: Request) {
     if (deployImmediately) {
       await syncDeploymentsFromDokploy(dokploy, app.id, applicationId);
     }
+
+    recordAuditEvent({
+      userId: session.user.id,
+      appId: app.id,
+      action: AUDIT_ACTIONS.appCreate,
+      request,
+      metadata: {
+        name,
+        repo: `${githubOwner}/${githubRepo}`,
+        branch: githubBranch,
+        buildType,
+        deployImmediately,
+      },
+    });
 
     return NextResponse.json({
       app,
