@@ -58,8 +58,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           provenance: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ github.ref_name }}
+          cache-to: type=gha,mode=max,scope=${{ github.ref_name }}
           build-args: |
             NEXT_PUBLIC_APP_URL=${{ steps.args.outputs.app_url }}
             NEXT_PUBLIC_BASE_DOMAIN=${{ steps.args.outputs.base_domain }}
