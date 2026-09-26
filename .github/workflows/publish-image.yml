@@ -64,3 +64,18 @@ jobs:
             NEXT_PUBLIC_APP_URL=${{ steps.args.outputs.app_url }}
             NEXT_PUBLIC_BASE_DOMAIN=${{ steps.args.outputs.base_domain }}
             NEXT_PUBLIC_FREE_SUBDOMAIN_PREFIX=${{ steps.args.outputs.prefix }}
+
+  # Dokploy Autodeploy only works for git-based sources, not Docker images.
+  # This job pings the Dokploy API to redeploy the staging panel after :next is pushed.
+  deploy-staging:
+    if: github.ref == 'refs/heads/staging'
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Dokploy redeploy
+        run: |
+          curl -fsSL -X POST \
+            "${{ secrets.DOKPLOY_API_URL }}/api/application.redeploy" \
+            -H "Authorization: Bearer ${{ secrets.DOKPLOY_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"applicationId":"${{ secrets.STAGING_DOKPLOY_APP_ID }}"}'

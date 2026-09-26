@@ -7,6 +7,7 @@ const mfaApiPrefix = "/api/auth/2fa";
 
 function isPublicApi(pathname: string): boolean {
   if (pathname === "/api/health") return true;
+  if (pathname === "/api/legal/accept") return true;
   if (pathname.startsWith("/api/auth/")) return true;
   if (pathname === "/api/github/app/webhook") return true;
   return false;

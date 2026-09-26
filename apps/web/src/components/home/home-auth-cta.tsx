@@ -1,7 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import {
+  LegalConsentDialog,
+  type ConsentProvider,
+} from "@/components/legal/legal-consent-dialog";
 
 function GitHubMark() {
   return (
@@ -46,6 +50,9 @@ function GoogleG() {
 }
 
 export function HomeAuthCta({ loggedIn }: { loggedIn: boolean }) {
+  const [pendingProvider, setPendingProvider] =
+    useState<ConsentProvider | null>(null);
+
   if (loggedIn) {
     return (
       <div className="home-cta-row">
@@ -64,7 +71,7 @@ export function HomeAuthCta({ loggedIn }: { loggedIn: boolean }) {
       <button
         type="button"
         className="home-btn-github"
-        onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
+        onClick={() => setPendingProvider("github")}
       >
         <GitHubMark />
         Deploy from GitHub
@@ -72,7 +79,7 @@ export function HomeAuthCta({ loggedIn }: { loggedIn: boolean }) {
       <button
         type="button"
         className="home-btn-google"
-        onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+        onClick={() => setPendingProvider("google")}
       >
         <span className="home-btn-google-logo">
           <GoogleG />
@@ -82,6 +89,16 @@ export function HomeAuthCta({ loggedIn }: { loggedIn: boolean }) {
       <Link href="/docs" className="home-text-link">
         Documentation
       </Link>
+
+      <LegalConsentDialog
+        open={pendingProvider !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingProvider(null);
+        }}
+        mode="signup"
+        provider={pendingProvider ?? "github"}
+        callbackUrl="/dashboard"
+      />
     </div>
   );
 }
