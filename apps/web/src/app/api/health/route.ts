@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import { createDokployClient } from "@hostingit/dokploy-client";
 
-/** Public liveness — no upstream error details. */
+/**
+ * Public liveness probe used by the Docker HEALTHCHECK.
+ *
+ * IMPORTANT: always returns HTTP 200 so the Docker healthcheck (wget-based)
+ * never fails just because an upstream service (Dokploy, DB) is unreachable.
+ * Upstream status is surfaced in the JSON body only — it is informational.
+ * A non-2xx here kills the container healthcheck → Traefik drops the container
+ * → Swarm endlessly respawns it → permanent 502.
+ */
 export async function GET() {
   const hasConfig =
     Boolean(process.env.DOKPLOY_API_URL) && Boolean(process.env.DOKPLOY_API_KEY);
@@ -24,13 +32,11 @@ export async function GET() {
       database: hasDb,
     });
   } catch {
-    return NextResponse.json(
-      {
-        status: "degraded",
-        deploy: "error",
-        database: hasDb,
-      },
-      { status: 503 }
-    );
+    // Dokploy unreachable — app can still serve traffic, so stay 200.
+    return NextResponse.json({
+      status: "degraded",
+      deploy: "error",
+      database: hasDb,
+    });
   }
 }

@@ -22,7 +22,7 @@ export default function SignupPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <OAuthButtons callbackUrl="/dashboard" />
+          <OAuthButtons callbackUrl="/dashboard" requireConsent />
           <p className="mt-6 text-center text-sm text-muted">
             Already have an account?{" "}
             <Link href="/login" className="font-medium text-ink hover:underline">

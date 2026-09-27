@@ -15,6 +15,7 @@ import {
   verifyMfaStamp,
 } from "@/lib/mfa-stamp";
 import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
+import { readConsentCookie } from "@/lib/legal-consent";
 
 async function sessionIsMfaVerified(
   userId: string | undefined,
@@ -106,6 +107,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         );
         const isLinking = Boolean(previousUserId && previousMfaVerified);
 
+        // Terms acceptance captured by the signup popup, handed over from the
+        // OAuth redirect. Null when the visitor came from any other entry point.
+        const consent = await readConsentCookie();
+
         let userId: string | null = null;
 
         if (isLinking && previousUserId) {
@@ -115,13 +120,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             profile as Record<string, unknown>,
             account.access_token
           );
-          const dbUser = await handleOAuthUser("github", parsed);
+          const dbUser = await handleOAuthUser("github", parsed, consent);
           userId = dbUser.id;
         } else if (account.provider === "google") {
           const parsed = parseGoogleProfile(
             profile as Record<string, unknown>
           );
-          const dbUser = await handleOAuthUser("google", parsed);
+          const dbUser = await handleOAuthUser("google", parsed, consent);
           userId = dbUser.id;
         }
 

@@ -71,6 +71,9 @@ export const users = pgTable("users", {
   avatarData: bytea("avatar_data"),
   avatarContentType: text("avatar_content_type"),
   avatarUpdatedAt: timestamp("avatar_updated_at"),
+  termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+  termsVersion: text("terms_version"),
+  privacyVersion: text("privacy_version"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

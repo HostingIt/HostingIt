@@ -23,6 +23,7 @@ export function HomeShell({
             <Link href="/status">Status</Link>
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
+            <Link href="/cookies">Cookies</Link>
           </nav>
         </div>
       </footer>

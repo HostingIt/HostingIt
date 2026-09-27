@@ -1,6 +1,7 @@
 import { eq, and, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { users, type User } from "@/db/schema";
+import type { ConsentPayload } from "@/lib/signed-cookie";
 
 export type OAuthProvider = "github" | "google";
 
@@ -89,6 +90,35 @@ function providerColumn(provider: OAuthProvider) {
   return provider === "github" ? users.githubId : users.googleId;
 }
 
+/**
+ * Writes terms acceptance onto the row a sign-in resolved to, but only when the
+ * account has never recorded one, so repeat sign-ins keep the first acceptance.
+ */
+async function recordConsentIfMissing(
+  user: User,
+  consent?: ConsentPayload | null
+): Promise<User> {
+  if (!consent || user.termsAcceptedAt) return user;
+
+  const acceptedAt = new Date(consent.acceptedAt);
+  await db
+    .update(users)
+    .set({
+      termsAcceptedAt: acceptedAt,
+      termsVersion: consent.termsVersion,
+      privacyVersion: consent.privacyVersion,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, user.id));
+
+  return {
+    ...user,
+    termsAcceptedAt: acceptedAt,
+    termsVersion: consent.termsVersion,
+    privacyVersion: consent.privacyVersion,
+  };
+}
+
 /** Promote ADMIN_EMAIL match to admin even if the account was created earlier. */
 async function ensureAdminBootstrap(user: User): Promise<User> {
   const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
@@ -174,7 +204,8 @@ function accountPriority(user: User): number {
  */
 export async function handleOAuthUser(
   provider: OAuthProvider,
-  profile: OAuthProfile
+  profile: OAuthProfile,
+  consent?: ConsentPayload | null
 ): Promise<User> {
   const { email, name, providerId } = profile;
 
@@ -200,7 +231,10 @@ export async function handleOAuthUser(
       throw new Error("ACCOUNT_SUSPENDED");
     }
     return ensureAdminBootstrap(
-      await attachProvider(byEmail.id, provider, providerId, name)
+      await recordConsentIfMissing(
+        await attachProvider(byEmail.id, provider, providerId, name),
+        consent
+      )
     );
   }
 
@@ -230,7 +264,10 @@ export async function handleOAuthUser(
             ? emailTaken
             : byProvider;
         return ensureAdminBootstrap(
-          await attachProvider(keep.id, provider, providerId, name)
+          await recordConsentIfMissing(
+            await attachProvider(keep.id, provider, providerId, name),
+            consent
+          )
         );
       }
       await db
@@ -240,7 +277,10 @@ export async function handleOAuthUser(
     }
 
     return ensureAdminBootstrap(
-      await attachProvider(byProvider.id, provider, providerId, name)
+      await recordConsentIfMissing(
+        await attachProvider(byProvider.id, provider, providerId, name),
+        consent
+      )
     );
   }
 
@@ -256,6 +296,9 @@ export async function handleOAuthUser(
       githubId: provider === "github" ? providerId : null,
       githubAccessToken: null,
       googleId: provider === "google" ? providerId : null,
+      termsAcceptedAt: consent ? new Date(consent.acceptedAt) : null,
+      termsVersion: consent?.termsVersion ?? null,
+      privacyVersion: consent?.privacyVersion ?? null,
     })
     .returning();
 

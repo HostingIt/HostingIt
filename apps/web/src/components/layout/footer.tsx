@@ -34,6 +34,9 @@ export function Footer() {
           <Link href="/privacy" className="hover:text-ink">
             Privacy
           </Link>
+          <Link href="/cookies" className="hover:text-ink">
+            Cookies
+          </Link>
         </nav>
       </div>
     </footer>

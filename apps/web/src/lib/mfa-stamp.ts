@@ -1,19 +1,12 @@
 import { cookies } from "next/headers";
+import {
+  cookieSecure,
+  hmacSha256Base64Url,
+  timingSafeEqualString,
+} from "@/lib/signed-cookie";
 
 export const MFA_STAMP_COOKIE = "hostingit_mfa";
 const MAX_AGE_SEC = 60 * 60 * 12; // 12 hours
-
-function secret(): string {
-  const value = process.env.AUTH_SECRET;
-  if (!value) throw new Error("AUTH_SECRET is not set");
-  return value;
-}
-
-function cookieSecure(): boolean {
-  const authUrl = process.env.AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
-  if (authUrl.startsWith("https://")) return true;
-  return process.env.NODE_ENV === "production";
-}
 
 export function mfaCookieOptions(maxAge = MAX_AGE_SEC) {
   return {
@@ -23,38 +16,6 @@ export function mfaCookieOptions(maxAge = MAX_AGE_SEC) {
     path: "/",
     maxAge,
   };
-}
-
-function bytesToBase64Url(bytes: ArrayBuffer): string {
-  const arr = new Uint8Array(bytes);
-  let bin = "";
-  for (let i = 0; i < arr.length; i++) {
-    bin += String.fromCharCode(arr[i]!);
-  }
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
-function timingSafeEqualString(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let out = 0;
-  for (let i = 0; i < a.length; i++) {
-    out |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return out === 0;
-}
-
-/** Edge + Node compatible HMAC-SHA256 (Web Crypto — no node:crypto). */
-async function hmacSha256Base64Url(payload: string): Promise<string> {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(secret()),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(payload));
-  return bytesToBase64Url(sig);
 }
 
 /** Signed proof that TOTP succeeded for this user. */

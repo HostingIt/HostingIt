@@ -2,6 +2,7 @@ import { eq, count } from "drizzle-orm";
 import { Providers } from "@/components/providers";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
+import { LegalConsentGate } from "@/components/legal/legal-consent-gate";
 import { requireAuth } from "@/lib/session";
 import { db } from "@/db";
 import { apps, users } from "@/db/schema";
@@ -23,6 +24,7 @@ export default async function DashboardLayout({
         role: users.role,
         plan: users.plan,
         avatarUpdatedAt: users.avatarUpdatedAt,
+        termsAcceptedAt: users.termsAcceptedAt,
       })
       .from(users)
       .where(eq(users.id, session.user.id))
@@ -64,6 +66,7 @@ export default async function DashboardLayout({
           </div>
         </div>
       </div>
+      {!user?.termsAcceptedAt && <LegalConsentGate />}
     </Providers>
   );
 }
