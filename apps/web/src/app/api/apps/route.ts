@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { users, apps } from "@/db/schema";
 import {
@@ -28,6 +27,7 @@ import {
 } from "@/lib/app-create-guard";
 import { syncDeploymentsFromDokploy } from "@/lib/deployments";
 import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
+import { requireApiUser } from "@/lib/api-auth";
 
 const createAppSchema = z.object({
   name: z
@@ -62,24 +62,20 @@ const createAppSchema = z.object({
 });
 
 export async function GET() {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await requireApiUser();
+  if ("error" in authResult) return authResult.error;
 
   const userApps = await db
     .select()
     .from(apps)
-    .where(eq(apps.userId, session.user.id));
+    .where(eq(apps.userId, authResult.user.id));
 
   return NextResponse.json({ apps: userApps });
 }
 
 export async function POST(request: Request) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await requireApiUser();
+  if ("error" in authResult) return authResult.error;
 
   let reservedAppId: string | null = null;
   const dokployResources: DokployProvisionResources = {};
@@ -114,7 +110,7 @@ export async function POST(request: Request) {
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.id, session.user.id))
+      .where(eq(users.id, authResult.user.id))
       .limit(1);
 
     if (!user) {
@@ -273,7 +269,7 @@ export async function POST(request: Request) {
     }
 
     recordAuditEvent({
-      userId: session.user.id,
+      userId: authResult.user.id,
       appId: app.id,
       action: AUDIT_ACTIONS.appCreate,
       request,

@@ -1,25 +1,23 @@
 import { NextResponse } from "next/server";
 import { eq, and } from "drizzle-orm";
-import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { apps } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
+import { requireApiUser } from "@/lib/api-auth";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await requireApiUser();
+  if ("error" in authResult) return authResult.error;
 
   const { id } = await params;
 
   const [app] = await db
     .select({ dokployAppId: apps.dokployAppId })
     .from(apps)
-    .where(and(eq(apps.id, id), eq(apps.userId, session.user.id)))
+    .where(and(eq(apps.id, id), eq(apps.userId, authResult.user.id)))
     .limit(1);
 
   if (!app) {

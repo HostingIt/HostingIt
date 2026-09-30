@@ -1,23 +1,13 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { requireApiAdmin } from "@/lib/api-auth";
 import { db } from "@/db";
 import { users, paymentRequests } from "@/db/schema";
 
-async function requireAdminSession() {
-  const session = await auth();
-  if (!session?.user?.id || session.user.role !== "admin") {
-    return null;
-  }
-  return session;
-}
-
 export async function GET() {
-  const session = await requireAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const authResult = await requireApiAdmin();
+  if ("error" in authResult) return authResult.error;
 
   const payments = await db
     .select({
@@ -37,10 +27,8 @@ const paymentActionSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const session = await requireAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const authResult = await requireApiAdmin();
+  if ("error" in authResult) return authResult.error;
 
   const body = await request.json();
   const parsed = paymentActionSchema.safeParse(body);

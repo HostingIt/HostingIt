@@ -105,6 +105,12 @@ export default auth(async (req) => {
     return NextResponse.next();
   }
 
+  // Server-side guards send suspended users (whose JWT may still say active)
+  // to /login?error=suspended; show it instead of bouncing to /dashboard.
+  if (isAuthPage && req.nextUrl.searchParams.has("error")) {
+    return NextResponse.next();
+  }
+
   if (
     isAuthPage ||
     pathname.startsWith("/setup-2fa") ||

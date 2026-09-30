@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { analyzeRepo } from "@/lib/repo-analyze";
 import { toClientError } from "@/lib/safe-error";
+import { requireApiUser } from "@/lib/api-auth";
 
 const querySchema = z.object({
   owner: z.string().min(1).max(100),
@@ -14,10 +14,8 @@ const querySchema = z.object({
 });
 
 export async function GET(request: Request) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await requireApiUser();
+  if ("error" in authResult) return authResult.error;
 
   const { searchParams } = new URL(request.url);
   const parsed = querySchema.safeParse({
@@ -36,7 +34,7 @@ export async function GET(request: Request) {
   const [user] = await db
     .select({ githubInstallationId: users.githubInstallationId })
     .from(users)
-    .where(eq(users.id, session.user.id))
+    .where(eq(users.id, authResult.user.id))
     .limit(1);
 
   if (!user?.githubInstallationId) {

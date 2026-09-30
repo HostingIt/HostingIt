@@ -1,23 +1,21 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { apps } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
 import { getOwnedApp } from "@/lib/app-access";
 import { resolveAppStatus } from "@/lib/app-status";
+import { requireApiUser } from "@/lib/api-auth";
 
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await requireApiUser();
+  if ("error" in authResult) return authResult.error;
 
   const { id } = await params;
-  const app = await getOwnedApp(session.user.id, id);
+  const app = await getOwnedApp(authResult.user.id, id);
   if (!app) {
     return NextResponse.json({ error: "App not found" }, { status: 404 });
   }

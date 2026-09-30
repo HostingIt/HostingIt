@@ -8,8 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/lib/repo-analyze.test.ts src/lib/env-secrets.test.ts src/lib/app-slug.test.ts src/lib/container-port.test.ts src/lib/signed-cookie.test.ts src/lib/totp.test.ts src/lib/github-app.test.ts",
-
+    "test": "node --experimental-strip-types --test src/lib/repo-analyze.test.ts src/lib/env-secrets.test.ts src/lib/app-slug.test.ts src/lib/container-port.test.ts src/lib/signed-cookie.test.ts src/lib/totp.test.ts src/lib/github-app.test.ts src/lib/custom-domain.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
@@ -30,7 +29,7 @@
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.28.0",
-    "next": "16.3.0",
+    "next": "16.3.8",
     "next-auth": "^5.0.0-beta.32",
     "next-themes": "^0.4.6",
     "otplib": "^13.4.1",
@@ -50,7 +49,7 @@
     "@types/react-dom": "^19",
     "dotenv": "^17.4.2",
     "eslint": "^9",
-    "eslint-config-next": "16.3.0",
+    "eslint-config-next": "16.3.8",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

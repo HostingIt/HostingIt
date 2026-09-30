@@ -43,6 +43,10 @@ export function SettingsTab({ app, onChanged }: SettingsTabProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [customDomain, setCustomDomain] = useState("");
+  const [domainVerification, setDomainVerification] = useState<{
+    name: string;
+    value: string;
+  } | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -107,10 +111,12 @@ export function SettingsTab({ app, onChanged }: SettingsTabProps) {
     });
     if (response.ok) {
       setCustomDomain("");
+      setDomainVerification(null);
       await onChanged();
     } else {
       const data = await response.json();
       setError(data.error ?? "Failed to add domain");
+      setDomainVerification(data.verification ?? null);
     }
     setSaving(false);
   }
@@ -305,15 +311,33 @@ export function SettingsTab({ app, onChanged }: SettingsTabProps) {
           <form onSubmit={addDomain} className="flex gap-2">
             <Input
               value={customDomain}
-              onChange={(e) => setCustomDomain(e.target.value)}
+              onChange={(e) => {
+                setCustomDomain(e.target.value);
+                setDomainVerification(null);
+              }}
               placeholder="app.example.com"
             />
             <Button type="submit" disabled={saving || !customDomain}>
               Add
             </Button>
           </form>
+          {domainVerification && (
+            <div className="mt-3 space-y-1 rounded-md border border-border p-3 text-sm">
+              <p className="font-medium">Add this TXT record at your DNS provider:</p>
+              <p className="break-all font-mono text-xs">
+                Name: {domainVerification.name}
+              </p>
+              <p className="break-all font-mono text-xs">
+                Value: {domainVerification.value}
+              </p>
+              <p className="text-muted">
+                DNS changes can take a few minutes. Click Add again once it&apos;s live.
+              </p>
+            </div>
+          )}
           <p className="mt-2 text-sm text-muted">
-            Requires Pro plan or higher. Point your domain CNAME to your app subdomain.
+            Requires Pro plan or higher. Point your domain CNAME to your app
+            subdomain, and verify ownership with the TXT record we show you.
           </p>
         </CardContent>
       </Card>

@@ -60,10 +60,14 @@ export async function GET(request: Request) {
   }
 
   const [user] = await db
-    .select({ githubId: users.githubId })
+    .select({ githubId: users.githubId, accountStatus: users.accountStatus })
     .from(users)
     .where(eq(users.id, stateUserId))
     .limit(1);
+
+  if (user?.accountStatus === "suspended") {
+    return NextResponse.redirect(appUrl("/login?error=suspended"));
+  }
 
   if (!user?.githubId) {
     return NextResponse.redirect(
