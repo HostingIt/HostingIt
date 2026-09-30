@@ -60,13 +60,44 @@ export function verifyTotpCode(secret: string, code: string): boolean {
   return result.valid;
 }
 
-export function encryptPendingSecret(secret: string): string {
-  return encryptSecret(secret);
-}
-
-export function decryptPendingSecret(stored: string): string {
-  return decryptSecret(stored);
-}
-
 /** HttpOnly cookie holding encrypted TOTP secret until enrollment completes. */
 export const PENDING_TOTP_COOKIE = "pending_totp_secret";
+export const PENDING_TOTP_MAX_AGE_SEC = 600;
+
+type PendingTotpPayload = { uid: string; exp: number; secret: string };
+
+/**
+ * Encrypts a pending TOTP secret bound to the user it was issued for, so a
+ * cookie minted for one account cannot complete enrollment on another.
+ */
+export function encryptPendingSecret(userId: string, secret: string): string {
+  const payload: PendingTotpPayload = {
+    uid: userId,
+    exp: Math.floor(Date.now() / 1000) + PENDING_TOTP_MAX_AGE_SEC,
+    secret,
+  };
+  return encryptSecret(JSON.stringify(payload));
+}
+
+/** Returns the pending secret, or null if it belongs to another user or expired. */
+export function decryptPendingSecret(
+  stored: string,
+  userId: string
+): string | null {
+  let payload: Partial<PendingTotpPayload>;
+  try {
+    payload = JSON.parse(decryptSecret(stored)) as Partial<PendingTotpPayload>;
+  } catch {
+    return null;
+  }
+  if (
+    typeof payload?.uid !== "string" ||
+    typeof payload.exp !== "number" ||
+    typeof payload.secret !== "string" ||
+    payload.uid !== userId ||
+    payload.exp < Math.floor(Date.now() / 1000)
+  ) {
+    return null;
+  }
+  return payload.secret;
+}

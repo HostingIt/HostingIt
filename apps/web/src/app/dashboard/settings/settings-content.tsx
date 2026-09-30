@@ -38,6 +38,15 @@ export default async function SettingsPageContent({
     github_app_wrong_user: "Install was started by a different account.",
     github_app_request_pending:
       "Repo access was requested from an org admin. Try again after approval.",
+    github_app_link_github:
+      "Connect your GitHub account on this page before installing the GitHub App.",
+    github_app_not_found: "That GitHub App installation could not be found.",
+    github_app_organization:
+      "Organization installs aren't supported yet. Install the app on your personal GitHub account.",
+    github_app_not_owner:
+      "That installation belongs to a different GitHub account than the one linked here.",
+    github_app_verify_failed:
+      "Couldn't verify the installation with GitHub. Try again in a moment.",
   };
 
   const linkError = params.error

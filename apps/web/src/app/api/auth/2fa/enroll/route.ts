@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import QRCode from "qrcode";
@@ -13,6 +13,7 @@ import {
   decryptPendingSecret,
   verifyTotpCode,
   PENDING_TOTP_COOKIE,
+  PENDING_TOTP_MAX_AGE_SEC,
 } from "@/lib/totp";
 import {
   MFA_STAMP_COOKIE,
@@ -25,8 +26,6 @@ import {
   getClientIp,
 } from "@/lib/rate-limit";
 import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
-
-const PENDING_MAX_AGE = 600;
 
 export async function GET() {
   const session = await auth();
@@ -66,8 +65,8 @@ export async function GET() {
   });
   response.cookies.set(
     PENDING_TOTP_COOKIE,
-    encryptPendingSecret(secret),
-    mfaCookieOptions(PENDING_MAX_AGE)
+    encryptPendingSecret(session.user.id, secret),
+    mfaCookieOptions(PENDING_TOTP_MAX_AGE_SEC)
   );
   return response;
 }
@@ -103,6 +102,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid code" }, { status: 400 });
   }
 
+  // Enrollment only sets up a first secret. Replacing an existing one would let
+  // anyone past the OAuth step (but not TOTP) swap in their own authenticator.
+  const [current] = await db
+    .select({ totpEnabled: users.totpEnabled, totpSecret: users.totpSecret })
+    .from(users)
+    .where(eq(users.id, session.user.id))
+    .limit(1);
+
+  if (!current) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+  if (current.totpEnabled && current.totpSecret) {
+    return NextResponse.json(
+      { error: "2FA is already enabled on this account." },
+      { status: 409 }
+    );
+  }
+
   const cookieStore = await cookies();
   const pending = cookieStore.get(PENDING_TOTP_COOKIE)?.value;
   if (!pending) {
@@ -112,11 +129,12 @@ export async function POST(request: Request) {
     );
   }
 
-  let secret: string;
-  try {
-    secret = decryptPendingSecret(pending);
-  } catch {
-    return NextResponse.json({ error: "Invalid enrollment state" }, { status: 400 });
+  const secret = decryptPendingSecret(pending, session.user.id);
+  if (!secret) {
+    return NextResponse.json(
+      { error: "Enrollment expired. Refresh and scan a new QR code." },
+      { status: 400 }
+    );
   }
 
   if (!verifyTotpCode(secret, parsed.data.code)) {
@@ -124,14 +142,27 @@ export async function POST(request: Request) {
   }
 
   clearRateLimit(rateKey);
-  await db
+  const enrolled = await db
     .update(users)
     .set({
       totpSecret: encryptSecret(secret),
       totpEnabled: true,
       updatedAt: new Date(),
     })
-    .where(eq(users.id, session.user.id));
+    .where(
+      and(
+        eq(users.id, session.user.id),
+        or(eq(users.totpEnabled, false), isNull(users.totpSecret))
+      )
+    )
+    .returning({ id: users.id });
+
+  if (enrolled.length === 0) {
+    return NextResponse.json(
+      { error: "2FA is already enabled on this account." },
+      { status: 409 }
+    );
+  }
 
   recordAuditEvent({
     userId: session.user.id,

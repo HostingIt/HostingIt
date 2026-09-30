@@ -81,6 +81,56 @@ export async function createInstallationAccessToken(
   return data.token;
 }
 
+export type GithubInstallation = {
+  id: number;
+  account: { id: number; login: string; type: "User" | "Organization" | string } | null;
+};
+
+/** Look up an installation of this App; null when it does not exist. */
+export async function getInstallation(
+  installationId: string
+): Promise<GithubInstallation | null> {
+  const response = await fetch(
+    `https://api.github.com/app/installations/${encodeURIComponent(installationId)}`,
+    {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${createGithubAppJwt()}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      cache: "no-store",
+    }
+  );
+
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(`Failed to look up GitHub App installation (${response.status})`);
+  }
+  return (await response.json()) as GithubInstallation;
+}
+
+export type InstallationOwnership =
+  | { ok: true }
+  | { ok: false; reason: "not_found" | "organization" | "not_owner" };
+
+/**
+ * The installation_id GitHub appends to the setup URL is caller-controlled, so
+ * only bind installations on the personal account the user signed in with.
+ */
+export function checkInstallationOwnership(
+  installation: GithubInstallation | null,
+  githubUserId: string
+): InstallationOwnership {
+  if (!installation?.account) return { ok: false, reason: "not_found" };
+  if (installation.account.type !== "User") {
+    return { ok: false, reason: "organization" };
+  }
+  if (String(installation.account.id) !== githubUserId) {
+    return { ok: false, reason: "not_owner" };
+  }
+  return { ok: true };
+}
+
 export function buildCloneUrl(
   owner: string,
   repo: string,
