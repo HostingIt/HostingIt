@@ -3,7 +3,12 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getSession } from "@/lib/session";
-import { verifyInstallState } from "@/lib/github-app";
+import {
+  checkInstallationOwnership,
+  getInstallation,
+  verifyInstallState,
+  type InstallationOwnership,
+} from "@/lib/github-app";
 import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 
 function appUrl(path: string): URL {
@@ -51,6 +56,37 @@ export async function GET(request: Request) {
   if (setupAction === "request") {
     return NextResponse.redirect(
       appUrl("/dashboard/settings?error=github_app_request_pending")
+    );
+  }
+
+  const [user] = await db
+    .select({ githubId: users.githubId })
+    .from(users)
+    .where(eq(users.id, stateUserId))
+    .limit(1);
+
+  if (!user?.githubId) {
+    return NextResponse.redirect(
+      appUrl("/dashboard/settings?error=github_app_link_github")
+    );
+  }
+
+  let ownership: InstallationOwnership;
+  try {
+    ownership = checkInstallationOwnership(
+      await getInstallation(installationId),
+      user.githubId
+    );
+  } catch (error) {
+    console.error("GitHub App installation lookup failed:", error);
+    return NextResponse.redirect(
+      appUrl("/dashboard/settings?error=github_app_verify_failed")
+    );
+  }
+
+  if (!ownership.ok) {
+    return NextResponse.redirect(
+      appUrl(`/dashboard/settings?error=github_app_${ownership.reason}`)
     );
   }
 
