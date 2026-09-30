@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { apps, users } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
@@ -15,6 +14,7 @@ import {
 import { syncDokployGitSource } from "@/lib/deploy-git";
 import { toClientError } from "@/lib/safe-error";
 import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
+import { requireApiUser } from "@/lib/api-auth";
 
 const buildTypes = [
   "nixpacks",
@@ -29,13 +29,11 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await requireApiUser();
+  if ("error" in authResult) return authResult.error;
 
   const { id } = await params;
-  const app = await getOwnedApp(session.user.id, id);
+  const app = await getOwnedApp(authResult.user.id, id);
   if (!app) {
     return NextResponse.json({ error: "App not found" }, { status: 404 });
   }
@@ -46,7 +44,7 @@ export async function GET(
     const [owner] = await db
       .select({ installationId: users.githubInstallationId })
       .from(users)
-      .where(eq(users.id, session.user.id))
+      .where(eq(users.id, authResult.user.id))
       .limit(1);
     const dockerfileText = await fetchDockerfileText({
       installationId: owner?.installationId,
@@ -105,13 +103,11 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await requireApiUser();
+  if ("error" in authResult) return authResult.error;
 
   const { id } = await params;
-  const app = await getOwnedApp(session.user.id, id);
+  const app = await getOwnedApp(authResult.user.id, id);
   if (!app) {
     return NextResponse.json({ error: "App not found" }, { status: 404 });
   }
@@ -140,7 +136,7 @@ export async function PATCH(
       const [owner] = await db
         .select({ installationId: users.githubInstallationId })
         .from(users)
-        .where(eq(users.id, session.user.id))
+        .where(eq(users.id, authResult.user.id))
         .limit(1);
 
       if (!owner?.installationId) {
@@ -209,7 +205,7 @@ export async function PATCH(
           await db
             .select({ installationId: users.githubInstallationId })
             .from(users)
-            .where(eq(users.id, session.user.id))
+            .where(eq(users.id, authResult.user.id))
             .limit(1)
         )[0]?.installationId,
         portOverride: data.containerPort,
@@ -220,7 +216,7 @@ export async function PATCH(
       await applyPlanResourceLimits(
         dokploy,
         app.dokployAppId,
-        session.user.plan ?? "free"
+        authResult.user.plan
       );
       await dokploy.redeploy(app.dokployAppId);
       await db
@@ -230,7 +226,7 @@ export async function PATCH(
     }
 
     recordAuditEvent({
-      userId: session.user.id,
+      userId: authResult.user.id,
       appId: app.id,
       action: AUDIT_ACTIONS.appSettingsUpdate,
       request,

@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { requireApiUser } from "@/lib/api-auth";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await requireApiUser();
+  if ("error" in authResult) return authResult.error;
 
   const [user] = await db
     .select({
@@ -19,7 +17,7 @@ export async function GET() {
       totpEnabled: users.totpEnabled,
     })
     .from(users)
-    .where(eq(users.id, session.user.id))
+    .where(eq(users.id, authResult.user.id))
     .limit(1);
 
   if (!user) {

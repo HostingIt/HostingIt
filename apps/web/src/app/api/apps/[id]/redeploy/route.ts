@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { eq, and } from "drizzle-orm";
-import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { apps, users } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
@@ -10,15 +9,14 @@ import { syncAppDomainPort } from "@/lib/dokploy-domain";
 import { syncDeploymentsFromDokploy } from "@/lib/deployments";
 import { toClientError } from "@/lib/safe-error";
 import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
+import { requireApiUser } from "@/lib/api-auth";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await requireApiUser();
+  if ("error" in authResult) return authResult.error;
 
   const { id } = await params;
 
@@ -30,7 +28,7 @@ export async function POST(
     })
     .from(apps)
     .innerJoin(users, eq(users.id, apps.userId))
-    .where(and(eq(apps.id, id), eq(apps.userId, session.user.id)))
+    .where(and(eq(apps.id, id), eq(apps.userId, authResult.user.id)))
     .limit(1);
 
   if (!row) {
@@ -84,7 +82,7 @@ export async function POST(
     await syncDeploymentsFromDokploy(dokploy, row.app.id, row.app.dokployAppId);
 
     recordAuditEvent({
-      userId: session.user.id,
+      userId: authResult.user.id,
       appId: row.app.id,
       action: AUDIT_ACTIONS.appRedeploy,
       request,

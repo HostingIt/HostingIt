@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { apps, users } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
@@ -13,18 +12,17 @@ import { envVarListSchema } from "@/lib/env-var-schema";
 import { mergeEnvVarUpdates, toMaskedEnvResponse } from "@/lib/env-secrets";
 import { toClientError } from "@/lib/safe-error";
 import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
+import { requireApiUser } from "@/lib/api-auth";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await requireApiUser();
+  if ("error" in authResult) return authResult.error;
 
   const { id } = await params;
-  const app = await getOwnedApp(session.user.id, id);
+  const app = await getOwnedApp(authResult.user.id, id);
   if (!app) {
     return NextResponse.json({ error: "App not found" }, { status: 404 });
   }
@@ -61,13 +59,11 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await requireApiUser();
+  if ("error" in authResult) return authResult.error;
 
   const { id } = await params;
-  const app = await getOwnedApp(session.user.id, id);
+  const app = await getOwnedApp(authResult.user.id, id);
   if (!app) {
     return NextResponse.json({ error: "App not found" }, { status: 404 });
   }
@@ -107,7 +103,7 @@ export async function PUT(
     const [owner] = await db
       .select({ installationId: users.githubInstallationId })
       .from(users)
-      .where(eq(users.id, session.user.id))
+      .where(eq(users.id, authResult.user.id))
       .limit(1);
 
     await syncAppDomainPort(dokploy, app, {
@@ -123,7 +119,7 @@ export async function PUT(
       await applyPlanResourceLimits(
         dokploy,
         app.dokployAppId,
-        session.user.plan ?? "free"
+        authResult.user.plan
       );
       await dokploy.redeploy(app.dokployAppId);
       await db
@@ -133,7 +129,7 @@ export async function PUT(
     }
 
     recordAuditEvent({
-      userId: session.user.id,
+      userId: authResult.user.id,
       appId: app.id,
       action: AUDIT_ACTIONS.appEnvUpdate,
       request,

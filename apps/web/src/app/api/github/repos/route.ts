@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { listInstallationRepos, isGithubAppConfigured } from "@/lib/github-app";
+import { requireApiUser } from "@/lib/api-auth";
 
 export async function GET() {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await requireApiUser();
+  if ("error" in authResult) return authResult.error;
 
   if (!isGithubAppConfigured()) {
     return NextResponse.json(
@@ -21,7 +19,7 @@ export async function GET() {
   const [user] = await db
     .select({ githubInstallationId: users.githubInstallationId })
     .from(users)
-    .where(eq(users.id, session.user.id))
+    .where(eq(users.id, authResult.user.id))
     .limit(1);
 
   if (!user?.githubInstallationId) {

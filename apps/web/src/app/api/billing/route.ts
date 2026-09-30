@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { paymentRequests } from "@/db/schema";
 import { PAYMENTS_ENABLED, PLANS } from "@/lib/plans";
 import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
+import { requireApiUser } from "@/lib/api-auth";
 
 const paymentSchema = z.object({
   plan: z.enum(["pro"]),
@@ -14,18 +14,16 @@ const paymentSchema = z.object({
 });
 
 export async function GET() {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await requireApiUser();
+  if ("error" in authResult) return authResult.error;
 
   const requests = await db
     .select()
     .from(paymentRequests)
-    .where(eq(paymentRequests.userId, session.user.id));
+    .where(eq(paymentRequests.userId, authResult.user.id));
 
   return NextResponse.json({
-    plan: session.user.plan ?? "free",
+    plan: authResult.user.plan,
     paymentInstructions: {
       upi: process.env.PAYMENT_UPI_ID ?? "Not configured",
       paypal: process.env.PAYMENT_PAYPAL ?? "Not configured",
@@ -36,10 +34,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await requireApiUser();
+  if ("error" in authResult) return authResult.error;
 
   if (!PAYMENTS_ENABLED) {
     return NextResponse.json(
@@ -62,7 +58,7 @@ export async function POST(request: Request) {
     const [request_] = await db
       .insert(paymentRequests)
       .values({
-        userId: session.user.id,
+        userId: authResult.user.id,
         plan: "pro",
         amount: amount.toFixed(2),
         method,
@@ -71,7 +67,7 @@ export async function POST(request: Request) {
       .returning();
 
     recordAuditEvent({
-      userId: session.user.id,
+      userId: authResult.user.id,
       action: AUDIT_ACTIONS.billingRequest,
       request,
       metadata: { plan: "pro", method },

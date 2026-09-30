@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
 import { getDokployClient } from "@/lib/dokploy";
 import { getOwnedApp } from "@/lib/app-access";
 import { assertDeploymentBelongsToApp } from "@/lib/deploy-log-access";
 import { sanitizeDeployLogs } from "@/lib/deploy-hints";
 import type { LogSince } from "@hostingit/dokploy-client";
+import { requireApiUser } from "@/lib/api-auth";
 
 const LOG_SINCE_PATTERN = /^(\d+)([smhd])$/;
 
@@ -17,13 +17,11 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await requireApiUser();
+  if ("error" in authResult) return authResult.error;
 
   const { id } = await params;
-  const app = await getOwnedApp(session.user.id, id);
+  const app = await getOwnedApp(authResult.user.id, id);
   if (!app) {
     return NextResponse.json({ error: "App not found" }, { status: 404 });
   }
