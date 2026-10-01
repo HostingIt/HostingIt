@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { users, paymentRequests } from "@/db/schema";
@@ -65,25 +65,43 @@ export async function POST(request: Request) {
     );
   }
 
+  // Only a still-pending request may change state, so two concurrent reviews
+  // cannot both apply.
+  const reviewed = await db
+    .update(paymentRequests)
+    .set({
+      status: action === "approve" ? "approved" : "rejected",
+      adminNotes,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(paymentRequests.id, paymentId),
+        eq(paymentRequests.status, "pending")
+      )
+    )
+    .returning({ id: paymentRequests.id });
+
+  if (reviewed.length === 0) {
+    return NextResponse.json(
+      { error: "Payment was already reviewed" },
+      { status: 409 }
+    );
+  }
+
   if (action === "approve") {
     await db
-      .update(paymentRequests)
-      .set({ status: "approved", adminNotes, updatedAt: new Date() })
-      .where(eq(paymentRequests.id, paymentId));
+      .update(users)
+      .set({ plan: payment.plan, updatedAt: new Date() })
+      .where(eq(users.id, payment.userId));
 
+    // Activate pending accounts, but never lift a suspension as a side effect.
     await db
       .update(users)
-      .set({
-        plan: payment.plan,
-        accountStatus: "active",
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, payment.userId));
-  } else {
-    await db
-      .update(paymentRequests)
-      .set({ status: "rejected", adminNotes, updatedAt: new Date() })
-      .where(eq(paymentRequests.id, paymentId));
+      .set({ accountStatus: "active", updatedAt: new Date() })
+      .where(
+        and(eq(users.id, payment.userId), eq(users.accountStatus, "pending"))
+      );
   }
 
   recordAuditEvent({

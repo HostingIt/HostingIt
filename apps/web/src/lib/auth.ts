@@ -8,6 +8,7 @@ import {
   parseGoogleProfile,
   resolveGitHubProfile,
   getUserById,
+  isGoogleEmailVerified,
 } from "@/lib/oauth-user";
 import {
   clearMfaStampCookie,
@@ -38,9 +39,47 @@ async function requestHeaders(): Promise<Headers | undefined> {
   }
 }
 
+/**
+ * `__Host-` cookies cannot be set or overwritten by another subdomain, which
+ * matters because tenant apps run on subdomains of the panel's domain. The
+ * prefix requires `Secure`, so it only applies when the canonical URL is HTTPS.
+ */
+const hostOnlyCookies = (
+  process.env.AUTH_URL ??
+  process.env.NEXT_PUBLIC_APP_URL ??
+  ""
+).startsWith("https://");
+
+function hostCookie(name: string, maxAge?: number) {
+  return {
+    name: `__Host-${name}`,
+    options: {
+      httpOnly: true,
+      sameSite: "lax" as const,
+      path: "/",
+      secure: true,
+      ...(maxAge ? { maxAge } : {}),
+    },
+  };
+}
+
+const OAUTH_FLOW_COOKIE_MAX_AGE = 60 * 15;
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   session: { strategy: "jwt" },
+  ...(hostOnlyCookies && {
+    cookies: {
+      sessionToken: hostCookie("authjs.session-token"),
+      callbackUrl: hostCookie("authjs.callback-url"),
+      pkceCodeVerifier: hostCookie(
+        "authjs.pkce.code_verifier",
+        OAUTH_FLOW_COOKIE_MAX_AGE
+      ),
+      state: hostCookie("authjs.state", OAUTH_FLOW_COOKIE_MAX_AGE),
+      nonce: hostCookie("authjs.nonce"),
+    },
+  }),
   pages: {
     signIn: "/login",
     error: "/login",
@@ -59,6 +98,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async signIn({ account, profile }) {
       if (!account || !profile) return false;
+
+      // Sign-in matches existing accounts by email, so the email must be
+      // proven by the provider before anything else runs.
+      if (
+        account.provider === "google" &&
+        !isGoogleEmailVerified(profile as Record<string, unknown>)
+      ) {
+        return "/login?error=email_unverified";
+      }
 
       try {
         const session = await auth();
@@ -89,6 +137,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       } catch (error) {
         if (error instanceof Error && error.message === "ACCOUNT_SUSPENDED") {
           return "/login?error=suspended";
+        }
+        if (error instanceof Error && error.message === "EMAIL_NOT_VERIFIED") {
+          return "/login?error=email_unverified";
         }
         if (error instanceof Error && error.message === "PROVIDER_IN_USE") {
           return "/dashboard/settings?error=provider_in_use";

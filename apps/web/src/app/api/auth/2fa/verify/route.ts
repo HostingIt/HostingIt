@@ -1,17 +1,22 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { decryptSecret, verifyTotpCode } from "@/lib/totp";
+import {
+  decryptSecret,
+  encryptSecret,
+  isLegacyEncryptedSecret,
+  verifyTotpCodeOnce,
+} from "@/lib/totp";
 import {
   MFA_STAMP_COOKIE,
   createMfaStamp,
   mfaCookieOptions,
 } from "@/lib/mfa-stamp";
 import {
-  checkRateLimit,
+  checkRateLimits,
   clearRateLimit,
   getClientIp,
 } from "@/lib/rate-limit";
@@ -22,6 +27,8 @@ const verifySchema = z.object({
 });
 
 const VERIFY_LIMIT = 5;
+/** Per-account cap that holds however many addresses the attempts come from. */
+const VERIFY_ACCOUNT_LIMIT = 10;
 const VERIFY_WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(request: Request) {
@@ -31,7 +38,11 @@ export async function POST(request: Request) {
   }
 
   const rateKey = `totp-verify:${session.user.id}:${getClientIp(request)}`;
-  const limited = checkRateLimit(rateKey, VERIFY_LIMIT, VERIFY_WINDOW_MS);
+  const accountKey = `totp-verify:${session.user.id}`;
+  const limited = checkRateLimits([
+    { key: accountKey, limit: VERIFY_ACCOUNT_LIMIT, windowMs: VERIFY_WINDOW_MS },
+    { key: rateKey, limit: VERIFY_LIMIT, windowMs: VERIFY_WINDOW_MS },
+  ]);
   if (!limited.ok) {
     return NextResponse.json(
       { error: "Too many attempts. Try again later." },
@@ -52,10 +63,15 @@ export async function POST(request: Request) {
     .select({
       totpSecret: users.totpSecret,
       totpEnabled: users.totpEnabled,
+      accountStatus: users.accountStatus,
     })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);
+
+  if (user?.accountStatus === "suspended") {
+    return NextResponse.json({ error: "Account suspended" }, { status: 403 });
+  }
 
   if (!user?.totpSecret || !user.totpEnabled) {
     return NextResponse.json({ error: "2FA not enrolled" }, { status: 400 });
@@ -68,7 +84,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "2FA configuration error" }, { status: 500 });
   }
 
-  if (!verifyTotpCode(secret, parsed.data.code)) {
+  if (!verifyTotpCodeOnce(session.user.id, secret, parsed.data.code)) {
     recordAuditEvent({
       userId: session.user.id,
       action: AUDIT_ACTIONS.authTwoFactorVerifyFailed,
@@ -78,6 +94,24 @@ export async function POST(request: Request) {
   }
 
   clearRateLimit(rateKey);
+  clearRateLimit(accountKey);
+
+  // Move secrets written under the old shared key onto the derived key.
+  if (isLegacyEncryptedSecret(user.totpSecret)) {
+    try {
+      await db
+        .update(users)
+        .set({ totpSecret: encryptSecret(secret), updatedAt: new Date() })
+        .where(
+          and(
+            eq(users.id, session.user.id),
+            eq(users.totpSecret, user.totpSecret)
+          )
+        );
+    } catch (error) {
+      console.error("TOTP secret re-encryption failed:", error);
+    }
+  }
 
   const mfaProof = await createMfaStamp(session.user.id);
   const response = NextResponse.json({

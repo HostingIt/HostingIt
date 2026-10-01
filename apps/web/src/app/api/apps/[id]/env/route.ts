@@ -36,7 +36,8 @@ export async function GET(
 
     return NextResponse.json({
       env: toMaskedEnvResponse(env),
-      buildArgs: parseEnvString(remote.buildArgs),
+      // Build args are not meant for secrets, but mask the ones that look like it.
+      buildArgs: toMaskedEnvResponse(parseEnvString(remote.buildArgs)),
       buildSecrets: toMaskedEnvResponse(buildSecrets, { forceSecret: true }),
     });
   } catch (error) {
@@ -82,18 +83,20 @@ export async function PUT(
     const remote = await dokploy.getApplication(app.dokployAppId);
     const existingEnv = parseEnvString(remote.env);
     const existingBuildSecrets = parseEnvString(remote.buildSecrets);
+    const existingBuildArgs = parseEnvString(remote.buildArgs);
 
     const env = mergeEnvVarUpdates(parsed.data.env, existingEnv);
     const buildSecrets = parsed.data.buildSecrets
       ? mergeEnvVarUpdates(parsed.data.buildSecrets, existingBuildSecrets)
       : undefined;
+    const buildArgs = parsed.data.buildArgs
+      ? mergeEnvVarUpdates(parsed.data.buildArgs, existingBuildArgs)
+      : undefined;
 
     await dokploy.saveEnvironment({
       applicationId: app.dokployAppId,
       env: serializeEnvVars(env) || null,
-      buildArgs: parsed.data.buildArgs
-        ? serializeEnvVars(parsed.data.buildArgs) || null
-        : null,
+      buildArgs: buildArgs ? serializeEnvVars(buildArgs) || null : null,
       buildSecrets: buildSecrets
         ? serializeEnvVars(buildSecrets) || null
         : null,

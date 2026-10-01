@@ -28,6 +28,13 @@ import {
 import { syncDeploymentsFromDokploy } from "@/lib/deployments";
 import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 import { requireApiUser } from "@/lib/api-auth";
+import {
+  buildStageSchema,
+  gitBranchSchema,
+  githubOwnerSchema,
+  githubRepoSchema,
+  repoPathSchema,
+} from "@/lib/build-config-schema";
 
 const createAppSchema = z.object({
   name: z
@@ -38,10 +45,10 @@ const createAppSchema = z.object({
       message:
         "App name must include at least one letter or number (a-z, 0-9)",
     }),
-  githubOwner: z.string().min(1),
-  githubRepo: z.string().min(1),
-  githubBranch: z.string().min(1).default("main"),
-  buildPath: z.string().max(256).default("/"),
+  githubOwner: githubOwnerSchema,
+  githubRepo: githubRepoSchema,
+  githubBranch: gitBranchSchema.default("main"),
+  buildPath: repoPathSchema.default("/"),
   buildType: z
     .enum([
       "nixpacks",
@@ -52,9 +59,9 @@ const createAppSchema = z.object({
       "railpack",
     ])
     .default("nixpacks"),
-  dockerfile: z.string().max(256).optional(),
-  dockerContextPath: z.string().max(256).optional(),
-  dockerBuildStage: z.string().max(256).optional(),
+  dockerfile: repoPathSchema.optional(),
+  dockerContextPath: repoPathSchema.optional(),
+  dockerBuildStage: buildStageSchema.optional(),
   env: envVarListSchema.optional(),
   buildSecrets: envVarListSchema.optional(),
   buildArgs: envVarListSchema.optional(),

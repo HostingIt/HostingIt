@@ -15,6 +15,11 @@ import { syncDokployGitSource } from "@/lib/deploy-git";
 import { toClientError } from "@/lib/safe-error";
 import { AUDIT_ACTIONS, recordAuditEvent } from "@/lib/audit";
 import { requireApiUser } from "@/lib/api-auth";
+import {
+  buildStageSchema,
+  gitBranchSchema,
+  repoPathSchema,
+} from "@/lib/build-config-schema";
 
 const buildTypes = [
   "nixpacks",
@@ -86,14 +91,14 @@ export async function GET(
 }
 
 const updateSettingsSchema = z.object({
-  githubBranch: z.string().min(1).max(256).optional(),
-  buildPath: z.string().max(256).optional(),
+  githubBranch: gitBranchSchema.optional(),
+  buildPath: repoPathSchema.optional(),
   buildType: z.enum(buildTypes).optional(),
   autoDeploy: z.boolean().optional(),
-  dockerfile: z.string().max(256).optional(),
-  dockerContextPath: z.string().max(256).optional(),
-  dockerBuildStage: z.string().max(256).optional(),
-  publishDirectory: z.string().max(256).optional(),
+  dockerfile: repoPathSchema.optional(),
+  dockerContextPath: repoPathSchema.optional(),
+  dockerBuildStage: buildStageSchema.optional(),
+  publishDirectory: repoPathSchema.optional(),
   isStaticSpa: z.boolean().optional(),
   containerPort: z.number().int().min(1).max(65535).optional(),
   redeploy: z.boolean().optional(),

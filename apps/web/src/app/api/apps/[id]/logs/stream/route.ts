@@ -2,19 +2,37 @@ import { getDokployClient } from "@/lib/dokploy";
 import { getOwnedApp } from "@/lib/app-access";
 import { assertDeploymentBelongsToApp } from "@/lib/deploy-log-access";
 import { sanitizeDeployLogs } from "@/lib/deploy-hints";
-import type { LogSince } from "@hostingit/dokploy-client";
 import { requireApiUser } from "@/lib/api-auth";
+import {
+  parseLogSearch,
+  parseLogSince,
+  parseLogTail,
+  parseOptionalLogTail,
+} from "@/lib/log-query";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const LOG_SINCE_PATTERN = /^(\d+)([smhd])$/;
 const POLL_MS = 1500;
 const HEARTBEAT_MS = 15000;
+/** The client reconnects on close, so a cap only bounds abandoned streams. */
+const MAX_STREAM_MS = 30 * 60 * 1000;
+/** Each open stream polls the deploy platform, so cap them per user. */
+const MAX_STREAMS_PER_USER = 4;
 
-function parseLogSince(value: string | null): LogSince | undefined {
-  if (!value || value === "all") return undefined;
-  return LOG_SINCE_PATTERN.test(value) ? (value as LogSince) : undefined;
+const openStreams = new Map<string, number>();
+
+function acquireStream(userId: string): boolean {
+  const current = openStreams.get(userId) ?? 0;
+  if (current >= MAX_STREAMS_PER_USER) return false;
+  openStreams.set(userId, current + 1);
+  return true;
+}
+
+function releaseStream(userId: string): void {
+  const current = openStreams.get(userId) ?? 0;
+  if (current <= 1) openStreams.delete(userId);
+  else openStreams.set(userId, current - 1);
 }
 
 function fingerprint(text: string): string {
@@ -37,14 +55,27 @@ export async function GET(
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type") ?? "runtime";
   const deploymentId = searchParams.get("deploymentId");
-  const tail = searchParams.get("tail");
+  const tailParam = searchParams.get("tail");
   const since = parseLogSince(searchParams.get("since"));
-  const search = searchParams.get("search") ?? undefined;
+  const search = parseLogSearch(searchParams.get("search"));
+
+  const userId = authResult.user.id;
+  if (!acquireStream(userId)) {
+    return new Response("Too many open log streams", {
+      status: 429,
+      headers: { "Retry-After": "30" },
+    });
+  }
 
   const dokploy = getDokployClient();
   const encoder = new TextEncoder();
   let closed = false;
   let lastFp = "";
+  let shutdown = () => {
+    if (closed) return;
+    closed = true;
+    releaseStream(userId);
+  };
 
   const stream = new ReadableStream({
     start(controller) {
@@ -77,11 +108,11 @@ export async function GET(
             }
             logs = await dokploy.getDeploymentLogs(
               deploymentId,
-              tail ? Number(tail) : undefined
+              parseOptionalLogTail(tailParam)
             );
           } else {
             logs = await dokploy.getApplicationLogs(app.dokployAppId, {
-              tail: tail ? Number(tail) : 200,
+              tail: parseLogTail(tailParam),
               since,
               search,
             });
@@ -100,12 +131,15 @@ export async function GET(
       void pull();
       const pollTimer = setInterval(() => void pull(), POLL_MS);
       const beatTimer = setInterval(ping, HEARTBEAT_MS);
+      const lifetimeTimer = setTimeout(() => shutdown(), MAX_STREAM_MS);
 
-      const shutdown = () => {
+      shutdown = () => {
         if (closed) return;
         closed = true;
         clearInterval(pollTimer);
         clearInterval(beatTimer);
+        clearTimeout(lifetimeTimer);
+        releaseStream(userId);
         try {
           controller.close();
         } catch {
@@ -114,9 +148,10 @@ export async function GET(
       };
 
       request.signal.addEventListener("abort", shutdown);
+      if (request.signal.aborted) shutdown();
     },
     cancel() {
-      closed = true;
+      shutdown();
     },
   });
 

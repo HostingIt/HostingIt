@@ -6,9 +6,13 @@ import { users } from "@/db/schema";
 import { requireApiUser } from "@/lib/api-auth";
 import { deleteUserAccount } from "@/lib/delete-account";
 import { MFA_STAMP_COOKIE, mfaCookieOptions } from "@/lib/mfa-stamp";
-import { decryptSecret, verifyTotpCode, PENDING_TOTP_COOKIE } from "@/lib/totp";
 import {
-  checkRateLimit,
+  decryptSecret,
+  verifyTotpCodeOnce,
+  PENDING_TOTP_COOKIE,
+} from "@/lib/totp";
+import {
+  checkRateLimits,
   clearRateLimit,
   getClientIp,
 } from "@/lib/rate-limit";
@@ -22,6 +26,7 @@ const deleteAccountSchema = z.object({
 });
 
 const DELETE_LIMIT = 3;
+const DELETE_ACCOUNT_LIMIT = 5;
 const DELETE_WINDOW_MS = 60 * 60 * 1000;
 
 export async function DELETE(request: Request) {
@@ -29,7 +34,11 @@ export async function DELETE(request: Request) {
   if ("error" in authResult) return authResult.error;
 
   const rateKey = `delete-account:${authResult.user.id}:${getClientIp(request)}`;
-  const limited = checkRateLimit(rateKey, DELETE_LIMIT, DELETE_WINDOW_MS);
+  const accountKey = `delete-account:${authResult.user.id}`;
+  const limited = checkRateLimits([
+    { key: accountKey, limit: DELETE_ACCOUNT_LIMIT, windowMs: DELETE_WINDOW_MS },
+    { key: rateKey, limit: DELETE_LIMIT, windowMs: DELETE_WINDOW_MS },
+  ]);
   if (!limited.ok) {
     return NextResponse.json(
       { error: "Too many delete attempts. Try again later." },
@@ -97,7 +106,7 @@ export async function DELETE(request: Request) {
     );
   }
 
-  if (!verifyTotpCode(secret, parsed.data.totpCode)) {
+  if (!verifyTotpCodeOnce(user.id, secret, parsed.data.totpCode)) {
     return NextResponse.json(
       { error: "Invalid authenticator code." },
       { status: 401 }
@@ -115,6 +124,7 @@ export async function DELETE(request: Request) {
   }
 
   clearRateLimit(rateKey);
+  clearRateLimit(accountKey);
 
   const response = NextResponse.json({ success: true });
   response.cookies.set(MFA_STAMP_COOKIE, "", {

@@ -28,6 +28,26 @@ Authorization is consistent and correct: every app route scopes by `eq(apps.user
 | M-4 | Medium | CSP allows `unsafe-inline`/`unsafe-eval`; no HSTS header |
 | L-1…L-6 | Low | See below |
 
+## Remediation status
+
+| ID | Status | What changed |
+|----|--------|--------------|
+| C-1 | **Fixed** | Strict allow-lists for build path, Dockerfile path, context path, publish directory, build stage, branch, owner and repo, enforced at three layers: zod schemas on the create/settings/analyze APIs (`lib/build-config-schema.ts`), the Dokploy client itself on `saveBuildType`/`saveGitProvider` (`packages/dokploy-client/src/validation.ts`), and a check of the *stored* config before every `deploy`/`redeploy`, so unsafe values saved before this fix can no longer reach a build. GitHub owner/repo/path are validated and URL-encoded before use in clone and API URLs, and the repo analyzer only suggests values the API accepts. |
+| H-1 | **Mitigated** (root fix needs infra) | Auth.js session and OAuth-flow cookies now use the `__Host-` prefix on HTTPS, so sibling subdomains cannot set or overwrite them. Middleware rejects state-changing API requests whose `Sec-Fetch-Site`/`Origin` is not the panel's own origin, which blocks same-site requests from tenant apps. **Still recommended:** serve tenant apps from a separate registrable domain. |
+| H-2 | **Fixed** | Client IP is taken from the trusted proxy hop (`TRUSTED_PROXY_HOPS`, default 1), not the client-supplied leftmost `X-Forwarded-For` entry; audit logs use the same derivation. TOTP verify/enroll and account deletion add a per-account limit that holds across addresses. Expired buckets are evicted. The limiter is still per-process: move it to a shared store before running more than one replica. |
+| M-1 | **Fixed** | `tail` is clamped (max 2000), `search` capped at 200 chars, at most 4 concurrent log streams per user, and streams close after 30 minutes. |
+| M-2 | **Fixed** | Google sign-in requires `email_verified === true`; the GitHub path no longer falls back to an unverified address. |
+| M-3 | **Fixed** (rotation still shared) | Per-purpose subkeys derived from `AUTH_SECRET` for the MFA stamp, consent cookie, GitHub install state, domain verification and TOTP-secret encryption. TOTP secrets move to a versioned `v2.` format with a full-length GCM tag. Legacy rows still decrypt and are re-encrypted on the next successful verification; legacy domain-verification TXT values are still accepted. |
+| M-4 | **Partially fixed** | `'unsafe-eval'` removed outside development, `object-src 'none'` and HSTS (`max-age=63072000`) added. `'unsafe-inline'` remains until nonce-based CSP is adopted. |
+| L-1 | **Fixed** | Build args whose names look sensitive are masked on read and merged on save. |
+| L-2 | **Fixed** | Unused `Math.random()` token generator removed. |
+| L-3 | Open | Dropping `password_hash` needs a schema migration. |
+| L-4 | **Fixed** | Dokploy projects are named and recovered by the full user id. |
+| L-6 | **Fixed** (replay, suspended) | TOTP codes cannot be reused (last accepted time step per user). 2FA routes reject suspended accounts. Server page guards now enforce 2FA too, not only middleware. |
+| Other | **Fixed** | Payment review is atomic (`WHERE status = 'pending'`) and no longer lifts a suspension; payment note length capped; webhook rejects malformed JSON. |
+
+**One-time user-visible effects on deploy:** everyone is signed out once (session cookie renamed) and prompted for TOTP once (MFA stamps re-keyed). New apps and branch changes must use branch names matching `[A-Za-z0-9._/+-]`.
+
 ---
 
 ## Critical

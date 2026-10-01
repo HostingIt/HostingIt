@@ -18,7 +18,9 @@ export default async function LoginPage({
   const errorMessage =
     params.error === "suspended"
       ? "Your account has been suspended. Contact support."
-      : params.error
+      : params.error === "email_unverified"
+        ? "Verify your email address with your provider, then sign in again."
+        : params.error
         ? "Sign in failed. Please try again."
         : null;
 

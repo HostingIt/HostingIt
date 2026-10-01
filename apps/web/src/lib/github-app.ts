@@ -1,5 +1,17 @@
 import { createHmac, createPrivateKey, createSign, timingSafeEqual } from "crypto";
+import { isValidGithubOwner, isValidGithubRepo } from "@hostingit/dokploy-client/validation";
 import type { GithubRepo } from "@/lib/github-repos";
+
+/**
+ * Per-purpose subkey: HMAC(AUTH_SECRET, "hostingit:<purpose>"), the same
+ * derivation as `purposeHmacKey` in signed-cookie.ts, so values made for one
+ * purpose can't be reused for another.
+ */
+function purposeKey(purpose: string): Buffer {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) throw new Error("AUTH_SECRET is not set");
+  return createHmac("sha256", secret).update(`hostingit:${purpose}`).digest();
+}
 
 function requireEnv(name: string): string {
   const value = process.env[name]?.trim();
@@ -131,11 +143,35 @@ export function checkInstallationOwnership(
   return { ok: true };
 }
 
+function assertRepoCoordinates(owner: string, repo: string): void {
+  if (!isValidGithubOwner(owner) || !isValidGithubRepo(repo)) {
+    throw new Error("Invalid GitHub repository");
+  }
+}
+
+function repoApiPath(owner: string, repo: string): string {
+  assertRepoCoordinates(owner, repo);
+  return `repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+}
+
+/** Repo-relative path for the Contents API, without `..` traversal. */
+function contentsPath(path: string): string {
+  const segments = path
+    .replace(/^\/+|\/+$/g, "")
+    .split("/")
+    .filter(Boolean);
+  if (segments.some((segment) => segment === "..")) {
+    throw new Error("Invalid repository path");
+  }
+  return segments.map(encodeURIComponent).join("/");
+}
+
 export function buildCloneUrl(
   owner: string,
   repo: string,
   installationToken: string
 ): string {
+  assertRepoCoordinates(owner, repo);
   return `https://x-access-token:${installationToken}@github.com/${owner}/${repo}.git`;
 }
 
@@ -154,11 +190,11 @@ export async function githubContents(
   path: string,
   ref: string
 ): Promise<GithubContentEntry[] | GithubContentEntry | null> {
-  const token = await createInstallationAccessToken(installationId);
-  const cleanPath = path.replace(/^\/+|\/+$/g, "");
+  const cleanPath = contentsPath(path);
   const url = new URL(
-    `https://api.github.com/repos/${owner}/${repo}/contents/${cleanPath}`
+    `https://api.github.com/${repoApiPath(owner, repo)}/contents/${cleanPath}`
   );
+  const token = await createInstallationAccessToken(installationId);
   if (ref) url.searchParams.set("ref", ref);
 
   const response = await fetch(url.toString(), {
@@ -188,11 +224,11 @@ export async function githubFileText(
   path: string,
   ref: string
 ): Promise<string | null> {
-  const token = await createInstallationAccessToken(installationId);
-  const cleanPath = path.replace(/^\/+|\/+$/g, "");
+  const cleanPath = contentsPath(path);
   const url = new URL(
-    `https://api.github.com/repos/${owner}/${repo}/contents/${cleanPath}`
+    `https://api.github.com/${repoApiPath(owner, repo)}/contents/${cleanPath}`
   );
+  const token = await createInstallationAccessToken(installationId);
   if (ref) url.searchParams.set("ref", ref);
 
   const response = await fetch(url.toString(), {
@@ -267,16 +303,16 @@ export async function listInstallationRepos(
 
 /** Signed state for install callback CSRF protection. */
 export function createInstallState(userId: string): string {
-  const secret = requireEnv("AUTH_SECRET");
+  const key = purposeKey("github-install-state");
   const exp = Math.floor(Date.now() / 1000) + 60 * 30;
   const body = `${userId}.${exp}`;
-  const sig = createHmac("sha256", secret).update(body).digest("base64url");
+  const sig = createHmac("sha256", key).update(body).digest("base64url");
   return `${body}.${sig}`;
 }
 
 export function verifyInstallState(state: string): string | null {
-  const secret = process.env.AUTH_SECRET;
-  if (!secret) return null;
+  if (!process.env.AUTH_SECRET) return null;
+  const key = purposeKey("github-install-state");
 
   const parts = state.split(".");
   if (parts.length !== 3) return null;
@@ -289,7 +325,7 @@ export function verifyInstallState(state: string): string | null {
   }
 
   const body = `${userId}.${expStr}`;
-  const expected = createHmac("sha256", secret).update(body).digest("base64url");
+  const expected = createHmac("sha256", key).update(body).digest("base64url");
   const a = Buffer.from(sig);
   const b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) {

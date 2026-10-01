@@ -47,17 +47,44 @@ export function timingSafeEqualString(a: string, b: string): boolean {
   return out === 0;
 }
 
-/** Edge + Node compatible HMAC-SHA256 (Web Crypto — no node:crypto). */
-export async function hmacSha256Base64Url(payload: string): Promise<string> {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
+export type SigningPurpose = "mfa-stamp" | "legal-consent";
+
+async function importHmacKey(raw: BufferSource): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
     "raw",
-    enc.encode(secret()),
+    raw,
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"]
   );
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(payload));
+}
+
+/**
+ * Per-purpose subkey: HMAC(AUTH_SECRET, "hostingit:<purpose>"). Matches
+ * `purposeKey` in purpose-key.ts, which Node-only code uses.
+ */
+async function purposeHmacKey(purpose: SigningPurpose): Promise<CryptoKey> {
+  const enc = new TextEncoder();
+  const root = await importHmacKey(enc.encode(secret()));
+  const derived = await crypto.subtle.sign(
+    "HMAC",
+    root,
+    enc.encode(`hostingit:${purpose}`)
+  );
+  return importHmacKey(derived);
+}
+
+/** Edge + Node compatible HMAC-SHA256 (Web Crypto — no node:crypto). */
+export async function hmacSha256Base64Url(
+  payload: string,
+  purpose: SigningPurpose
+): Promise<string> {
+  const key = await purposeHmacKey(purpose);
+  const sig = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(payload)
+  );
   return bytesToBase64Url(sig);
 }
 
@@ -75,7 +102,7 @@ export async function createConsentToken(
   payload: ConsentPayload
 ): Promise<string> {
   const body = utf8ToBase64Url(JSON.stringify(payload));
-  return `${body}.${await hmacSha256Base64Url(body)}`;
+  return `${body}.${await hmacSha256Base64Url(body, "legal-consent")}`;
 }
 
 export async function verifyConsentToken(
@@ -90,7 +117,7 @@ export async function verifyConsentToken(
   const signature = token.slice(separator + 1);
   if (!body || !signature) return null;
 
-  const expected = await hmacSha256Base64Url(body);
+  const expected = await hmacSha256Base64Url(body, "legal-consent");
   if (!timingSafeEqualString(signature, expected)) return null;
 
   const json = base64UrlToUtf8(body);

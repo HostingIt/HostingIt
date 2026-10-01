@@ -11,7 +11,7 @@ import {
   encryptSecret,
   encryptPendingSecret,
   decryptPendingSecret,
-  verifyTotpCode,
+  verifyTotpCodeOnce,
   PENDING_TOTP_COOKIE,
   PENDING_TOTP_MAX_AGE_SEC,
 } from "@/lib/totp";
@@ -21,7 +21,7 @@ import {
   mfaCookieOptions,
 } from "@/lib/mfa-stamp";
 import {
-  checkRateLimit,
+  checkRateLimits,
   clearRateLimit,
   getClientIp,
 } from "@/lib/rate-limit";
@@ -38,6 +38,7 @@ export async function GET() {
       email: users.email,
       totpEnabled: users.totpEnabled,
       totpSecret: users.totpSecret,
+      accountStatus: users.accountStatus,
     })
     .from(users)
     .where(eq(users.id, session.user.id))
@@ -45,6 +46,9 @@ export async function GET() {
 
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+  if (user.accountStatus === "suspended") {
+    return NextResponse.json({ error: "Account suspended" }, { status: 403 });
   }
 
   if (user.totpEnabled && user.totpSecret) {
@@ -76,6 +80,7 @@ const enrollSchema = z.object({
 });
 
 const ENROLL_LIMIT = 5;
+const ENROLL_ACCOUNT_LIMIT = 10;
 const ENROLL_WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(request: Request) {
@@ -85,7 +90,11 @@ export async function POST(request: Request) {
   }
 
   const rateKey = `totp-enroll:${session.user.id}:${getClientIp(request)}`;
-  const limited = checkRateLimit(rateKey, ENROLL_LIMIT, ENROLL_WINDOW_MS);
+  const accountKey = `totp-enroll:${session.user.id}`;
+  const limited = checkRateLimits([
+    { key: accountKey, limit: ENROLL_ACCOUNT_LIMIT, windowMs: ENROLL_WINDOW_MS },
+    { key: rateKey, limit: ENROLL_LIMIT, windowMs: ENROLL_WINDOW_MS },
+  ]);
   if (!limited.ok) {
     return NextResponse.json(
       { error: "Too many attempts. Try again later." },
@@ -105,13 +114,20 @@ export async function POST(request: Request) {
   // Enrollment only sets up a first secret. Replacing an existing one would let
   // anyone past the OAuth step (but not TOTP) swap in their own authenticator.
   const [current] = await db
-    .select({ totpEnabled: users.totpEnabled, totpSecret: users.totpSecret })
+    .select({
+      totpEnabled: users.totpEnabled,
+      totpSecret: users.totpSecret,
+      accountStatus: users.accountStatus,
+    })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);
 
   if (!current) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+  if (current.accountStatus === "suspended") {
+    return NextResponse.json({ error: "Account suspended" }, { status: 403 });
   }
   if (current.totpEnabled && current.totpSecret) {
     return NextResponse.json(
@@ -137,11 +153,12 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!verifyTotpCode(secret, parsed.data.code)) {
+  if (!verifyTotpCodeOnce(session.user.id, secret, parsed.data.code)) {
     return NextResponse.json({ error: "Invalid code" }, { status: 400 });
   }
 
   clearRateLimit(rateKey);
+  clearRateLimit(accountKey);
   const enrolled = await db
     .update(users)
     .set({

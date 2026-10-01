@@ -63,10 +63,10 @@ export async function resolveGitHubProfile(
       verified: boolean;
     }>;
 
+    // Accounts are matched by email, so only a verified address may be used.
     const pick =
       emails.find((e) => e.primary && e.verified) ??
-      emails.find((e) => e.verified) ??
-      emails[0];
+      emails.find((e) => e.verified);
 
     if (pick?.email) {
       return { ...base, email: pick.email.toLowerCase() };
@@ -78,7 +78,15 @@ export async function resolveGitHubProfile(
   return base;
 }
 
+/** Google sets `email_verified`; anything but `true` must not reach email matching. */
+export function isGoogleEmailVerified(profile: Record<string, unknown>): boolean {
+  return profile.email_verified === true;
+}
+
 export function parseGoogleProfile(profile: Record<string, unknown>): OAuthProfile {
+  if (!isGoogleEmailVerified(profile)) {
+    throw new Error("EMAIL_NOT_VERIFIED");
+  }
   return {
     email: String(profile.email ?? "").toLowerCase(),
     name: (profile.name as string | undefined) ?? null,

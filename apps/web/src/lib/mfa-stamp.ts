@@ -22,7 +22,7 @@ export function mfaCookieOptions(maxAge = MAX_AGE_SEC) {
 export async function createMfaStamp(userId: string): Promise<string> {
   const exp = Math.floor(Date.now() / 1000) + MAX_AGE_SEC;
   const payload = `${userId}.${exp}`;
-  const sig = await hmacSha256Base64Url(payload);
+  const sig = await hmacSha256Base64Url(payload, "mfa-stamp");
   return `${payload}.${sig}`;
 }
 
@@ -39,7 +39,7 @@ export async function verifyMfaStamp(
   if (!Number.isFinite(exp) || exp < Math.floor(Date.now() / 1000)) return false;
 
   const payload = `${uid}.${expStr}`;
-  const expected = await hmacSha256Base64Url(payload);
+  const expected = await hmacSha256Base64Url(payload, "mfa-stamp");
   return timingSafeEqualString(sig, expected);
 }
 

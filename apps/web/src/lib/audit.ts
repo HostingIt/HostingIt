@@ -1,7 +1,7 @@
 import { after } from "next/server";
 import { db } from "@/db";
 import { auditLogs } from "@/db/schema";
-import { getClientIp } from "@/lib/rate-limit";
+import { clientIpFromHeaders } from "@/lib/rate-limit";
 
 /** Canonical audit actions. Grouped by `category` prefix for the Security page filters. */
 export const AUDIT_ACTIONS = {
@@ -56,16 +56,8 @@ function extractRequestInfo(input: AuditEventInput): {
   if (!source) return { ip: null, userAgent: null };
 
   const userAgent = source.get("user-agent")?.trim() || null;
-  if (input.request) {
-    const ip = getClientIp(input.request);
-    return { ip: ip === "unknown" ? null : ip, userAgent };
-  }
-
-  const forwarded = source.get("x-forwarded-for");
-  const firstForwarded = forwarded?.split(",")[0]?.trim();
-  const ip =
-    firstForwarded || source.get("x-real-ip")?.trim() || null;
-  return { ip: ip || null, userAgent };
+  const ip = clientIpFromHeaders(source);
+  return { ip: ip === "unknown" ? null : ip, userAgent };
 }
 
 function insertAuditRow(

@@ -1,5 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { createHmac } from "crypto";
 import {
   domainVerificationRecord,
   isDomainVerified,
@@ -63,5 +64,18 @@ describe("custom domain DNS verification", () => {
       throw Object.assign(new Error("queryTxt ENOTFOUND"), { code: "ENOTFOUND" });
     };
     assert.equal(await isDomainVerified(USER, "app.example.com", missing), false);
+  });
+});
+
+describe("legacy domain verification tokens", () => {
+  it("still accepts a TXT record published before per-purpose keys", async () => {
+    const legacy = createHmac("sha256", process.env.AUTH_SECRET!)
+      .update(`custom-domain:${USER}:app.example.com`)
+      .digest("hex")
+      .slice(0, 32);
+    const { value } = domainVerificationRecord(USER, "app.example.com");
+    assert.notEqual(value, `hostingit-verify=${legacy}`);
+    const resolver = async () => [[`hostingit-verify=${legacy}`]];
+    assert.equal(await isDomainVerified(USER, "app.example.com", resolver), true);
   });
 });

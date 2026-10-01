@@ -10,7 +10,7 @@ import { requireApiUser } from "@/lib/api-auth";
 const paymentSchema = z.object({
   plan: z.enum(["pro"]),
   method: z.enum(["upi", "paypal", "bank"]),
-  referenceNote: z.string().min(3),
+  referenceNote: z.string().trim().min(3).max(500),
 });
 
 export async function GET() {

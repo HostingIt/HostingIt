@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { MFA_STAMP_COOKIE, verifyMfaStamp } from "@/lib/mfa-stamp";
+import { isCrossOriginWrite } from "@/lib/request-origin";
 
 const mfaAllowedPaths = ["/setup-2fa", "/login/2fa"];
 const mfaApiPrefix = "/api/auth/2fa";
@@ -11,6 +12,20 @@ function isPublicApi(pathname: string): boolean {
   if (pathname.startsWith("/api/auth/")) return true;
   if (pathname === "/api/github/app/webhook") return true;
   return false;
+}
+
+/**
+ * Server-to-server endpoints and Auth.js's own handlers (which carry their own
+ * CSRF token, and may receive provider form posts) are exempt. Our 2FA routes
+ * live under /api/auth/ but are ordinary JSON endpoints, so they are checked.
+ */
+function requiresSameOrigin(pathname: string): boolean {
+  if (!pathname.startsWith("/api/")) return false;
+  if (pathname === "/api/github/app/webhook") return false;
+  if (pathname.startsWith("/api/auth/") && !pathname.startsWith(mfaApiPrefix)) {
+    return false;
+  }
+  return true;
 }
 
 function isMfaAllowedPath(pathname: string): boolean {
@@ -26,6 +41,16 @@ export default auth(async (req) => {
   const session = req.auth;
   const isLoggedIn = !!session?.user?.id;
   const isApi = pathname.startsWith("/api/");
+
+  if (
+    requiresSameOrigin(pathname) &&
+    isCrossOriginWrite(req.method, req.headers)
+  ) {
+    return NextResponse.json(
+      { error: "Cross-origin request blocked" },
+      { status: 403 }
+    );
+  }
 
   if (isApi && isPublicApi(pathname)) {
     return NextResponse.next();

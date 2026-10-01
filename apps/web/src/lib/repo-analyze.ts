@@ -1,4 +1,8 @@
 import {
+  isSafeBuildStage,
+  isSafeRepoPath,
+} from "@hostingit/dokploy-client/validation";
+import {
   githubContents,
   githubFileText,
   type GithubContentEntry,
@@ -39,6 +43,28 @@ export {
   scoreDirectory,
   selectDefaultTarget,
 } from "@/lib/repo-analyze-core";
+
+/**
+ * Suggestions come from repo contents (e.g. compose `context:`), so only keep
+ * values the create/settings API will accept.
+ */
+function toSafeTarget(target: DeployTarget): DeployTarget | null {
+  if (!isSafeRepoPath(target.buildPath)) return null;
+  const safe: DeployTarget = { ...target };
+  if (safe.dockerfile && !isSafeRepoPath(safe.dockerfile)) {
+    delete safe.dockerfile;
+  }
+  if (safe.dockerContextPath && !isSafeRepoPath(safe.dockerContextPath)) {
+    delete safe.dockerContextPath;
+  }
+  if (safe.dockerBuildStage && !isSafeBuildStage(safe.dockerBuildStage)) {
+    delete safe.dockerBuildStage;
+  }
+  if (safe.dockerfileStages) {
+    safe.dockerfileStages = safe.dockerfileStages.filter(isSafeBuildStage);
+  }
+  return safe;
+}
 
 function fileNames(entries: GithubContentEntry[]): Set<string> {
   return new Set(entries.filter((e) => e.type === "file").map((e) => e.name));
@@ -359,7 +385,11 @@ export async function analyzeRepo(input: {
     if (fallback) targetsByPath.set("/", fallback);
   }
 
-  let targets = rankTargets([...targetsByPath.values()]);
+  let targets = rankTargets(
+    [...targetsByPath.values()]
+      .map(toSafeTarget)
+      .filter((t): t is DeployTarget => t !== null)
+  );
   if (
     targets.length > 1 &&
     targets.some((t) => t.buildPath === "/") &&

@@ -1,3 +1,7 @@
+import { findUnsafeBuildField, isSafeRepoPath, isValidGitBranch } from "./validation";
+
+export * from "./validation";
+
 export class DokployError extends Error {
   constructor(
     message: string,
@@ -7,6 +11,14 @@ export class DokployError extends Error {
     super(message);
     this.name = "DokployError";
   }
+}
+
+function unsafeBuildConfigError(field: string): DokployError {
+  return new DokployError(
+    `Invalid build setting: ${field} contains unsupported characters`,
+    400,
+    "UNSAFE_BUILD_CONFIG"
+  );
 }
 
 export interface DokployClientConfig {
@@ -359,6 +371,8 @@ export class DokployClient {
   }
 
   async saveBuildType(input: SaveBuildTypeInput): Promise<boolean> {
+    const unsafe = findUnsafeBuildField(input);
+    if (unsafe) throw unsafeBuildConfigError(unsafe);
     return this.request<boolean>("/api/application.saveBuildType", {
       method: "POST",
       body: JSON.stringify({
@@ -422,6 +436,10 @@ export class DokployClient {
     watchPaths?: string[] | null;
   }): Promise<boolean> {
     const buildPath = input.customGitBuildPath ?? "/";
+    if (!isSafeRepoPath(buildPath)) throw unsafeBuildConfigError("buildPath");
+    if (!isValidGitBranch(input.customGitBranch)) {
+      throw unsafeBuildConfigError("branch");
+    }
     return this.request<boolean>("/api/application.saveGitProvider", {
       method: "POST",
       body: JSON.stringify({
@@ -436,7 +454,18 @@ export class DokployClient {
     });
   }
 
+  /**
+   * Refuses to build when the stored settings are unsafe, which also covers
+   * values saved before input validation existed.
+   */
+  private async assertSafeStoredBuildConfig(applicationId: string): Promise<void> {
+    const app = await this.getApplication(applicationId);
+    const unsafe = findUnsafeBuildField(app);
+    if (unsafe) throw unsafeBuildConfigError(unsafe);
+  }
+
   async deploy(input: DeployInput): Promise<{ success: boolean }> {
+    await this.assertSafeStoredBuildConfig(input.applicationId);
     return this.request("/api/application.deploy", {
       method: "POST",
       body: JSON.stringify({
@@ -448,6 +477,7 @@ export class DokployClient {
   }
 
   async redeploy(applicationId: string): Promise<{ success: boolean }> {
+    await this.assertSafeStoredBuildConfig(applicationId);
     return this.request("/api/application.redeploy", {
       method: "POST",
       body: JSON.stringify({ applicationId }),

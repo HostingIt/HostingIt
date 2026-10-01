@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   CONSENT_TOKEN_MAX_AGE_MS,
   createConsentToken,
+  hmacSha256Base64Url,
   verifyConsentToken,
   type ConsentPayload,
 } from "./signed-cookie.ts";
@@ -74,5 +75,13 @@ describe("consent token", () => {
       termsVersion: "2026-09-26",
     } as ConsentPayload);
     assert.equal(await verifyConsentToken(token), null);
+  });
+});
+
+describe("purpose-bound signing keys", () => {
+  it("produces different signatures for different purposes", async () => {
+    const a = await hmacSha256Base64Url("same-payload", "mfa-stamp");
+    const b = await hmacSha256Base64Url("same-payload", "legal-consent");
+    assert.notEqual(a, b);
   });
 });

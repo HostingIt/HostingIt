@@ -28,7 +28,9 @@ export async function ensureUserDokployEnvironment(user: {
   dokployEnvironmentId: string | null;
 }): Promise<UserDokployContext> {
   const dokploy = getDokployClient();
-  const expectedName = `hostingit-${user.id.slice(0, 8)}`;
+  // Full user id: projects are recovered by name below, and a shortened id
+  // could resolve to (and later delete) another tenant's project.
+  const expectedName = `hostingit-${user.id}`;
 
   async function validate(
     projectId: string,

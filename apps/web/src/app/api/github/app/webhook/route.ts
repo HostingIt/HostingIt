@@ -19,7 +19,12 @@ export async function POST(request: Request) {
   }
 
   const event = request.headers.get("x-github-event");
-  const payload = JSON.parse(rawBody) as Record<string, unknown>;
+  let payload: Record<string, unknown>;
+  try {
+    payload = JSON.parse(rawBody) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  }
 
   try {
     if (event === "installation") {

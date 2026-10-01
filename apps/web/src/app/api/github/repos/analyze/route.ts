@@ -6,11 +6,16 @@ import { users } from "@/db/schema";
 import { analyzeRepo } from "@/lib/repo-analyze";
 import { toClientError } from "@/lib/safe-error";
 import { requireApiUser } from "@/lib/api-auth";
+import {
+  gitBranchSchema,
+  githubOwnerSchema,
+  githubRepoSchema,
+} from "@/lib/build-config-schema";
 
 const querySchema = z.object({
-  owner: z.string().min(1).max(100),
-  repo: z.string().min(1).max(200),
-  branch: z.string().min(1).max(256).default("main"),
+  owner: githubOwnerSchema,
+  repo: githubRepoSchema,
+  branch: gitBranchSchema.default("main"),
 });
 
 export async function GET(request: Request) {

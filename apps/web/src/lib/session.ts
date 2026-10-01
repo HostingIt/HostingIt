@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { readMfaStampVerified } from "@/lib/mfa-stamp";
 
 /** Dedupe auth() within a single RSC request tree. */
 export const getSession = cache(async () => auth());
@@ -23,11 +24,18 @@ const getFreshSession = cache(async () => {
       role: users.role,
       plan: users.plan,
       accountStatus: users.accountStatus,
+      totpSecret: users.totpSecret,
+      totpEnabled: users.totpEnabled,
     })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);
   if (!row) return null;
+
+  const mfaEnrolled = !!(row.totpSecret && row.totpEnabled);
+  const mfaVerified =
+    Boolean(session.user.mfaVerified) ||
+    (mfaEnrolled && (await readMfaStampVerified(session.user.id)));
 
   return {
     ...session,
@@ -36,6 +44,8 @@ const getFreshSession = cache(async () => {
       role: row.role,
       plan: row.plan,
       accountStatus: row.accountStatus,
+      mfaEnrolled,
+      mfaVerified,
     },
   };
 });
@@ -47,6 +57,14 @@ export async function requireAuth() {
   }
   if (session.user.accountStatus === "suspended") {
     redirect("/login?error=suspended");
+  }
+  // Middleware enforces this too; repeat it here so a page never renders for
+  // a session that skipped 2FA if a route ever falls outside its matcher.
+  if (!session.user.mfaEnrolled) {
+    redirect("/setup-2fa");
+  }
+  if (!session.user.mfaVerified) {
+    redirect("/login/2fa");
   }
   return session;
 }
