@@ -25,7 +25,8 @@ export function Modal({
   contentClassName?: string;
   overlayClassName?: string;
   hideClose?: boolean;
-  variant?: "center" | "sheet";
+  /** sheet: left nav panel; drawer: right-side detail panel with a header. */
+  variant?: "center" | "sheet" | "drawer";
 }) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -44,13 +45,22 @@ export function Modal({
             variant === "center" &&
               "fixed left-1/2 top-1/2 w-[min(28rem,calc(100vw-1.5rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl p-5",
             variant === "sheet" &&
-              "fixed inset-y-0 left-0 flex h-svh w-64 flex-col overflow-hidden rounded-none p-0"
+              "fixed inset-y-0 left-0 flex h-svh w-64 flex-col overflow-hidden rounded-none p-0",
+            variant === "drawer" &&
+              "fixed inset-y-0 right-0 flex h-svh w-[min(34rem,100vw)] flex-col overflow-hidden rounded-none border-y-0 border-r-0 p-0"
           )}
         >
           {variant === "sheet" ? (
             <Dialog.Title className="sr-only">{title}</Dialog.Title>
           ) : (
-            <div className="mb-4 flex items-start justify-between gap-3">
+            <div
+              className={cn(
+                "flex items-start justify-between gap-3",
+                variant === "drawer"
+                  ? "shrink-0 border-b border-border px-5 py-4"
+                  : "mb-4"
+              )}
+            >
               <div className="min-w-0">
                 <Dialog.Title className="font-display text-lg font-bold text-ink">
                   {title}

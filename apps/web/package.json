@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/lib/repo-analyze.test.ts src/lib/env-secrets.test.ts src/lib/app-slug.test.ts src/lib/container-port.test.ts src/lib/signed-cookie.test.ts src/lib/totp.test.ts src/lib/github-app.test.ts src/lib/custom-domain.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/repo-analyze.test.ts src/lib/env-secrets.test.ts src/lib/app-slug.test.ts src/lib/container-port.test.ts src/lib/signed-cookie.test.ts src/lib/totp.test.ts src/lib/github-app.test.ts src/lib/custom-domain.test.ts src/lib/resource-limits.test.ts src/lib/user-agent.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",

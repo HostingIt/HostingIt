@@ -12,6 +12,7 @@ export async function GET() {
     .select({
       app: apps,
       userEmail: users.email,
+      plan: users.plan,
     })
     .from(apps)
     .innerJoin(users, eq(apps.userId, users.id));

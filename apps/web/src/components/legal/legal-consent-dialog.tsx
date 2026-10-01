@@ -23,7 +23,7 @@ const PROVIDER_LABEL: Record<ConsentProvider, string> = {
 };
 
 const SUMMARY = [
-  "HostingIt builds and runs Docker apps from a GitHub repository you pick. The free plan runs one app with 256 MB of memory and 0.25 vCPU on a subdomain with HTTPS.",
+  "HostingIt builds and runs Docker apps from a GitHub repository you pick. The free plan runs one app with 512 MB of memory and 1 vCPU on a subdomain with HTTPS.",
   "Hosting is best-effort. We publish no uptime guarantee, so keep anything critical somewhere else.",
   "You keep ownership of your code. We read only the repositories you grant through the GitHub App, and we use them to build and serve your apps.",
   "Crypto mining, spam, malware, and anything illegal are not allowed.",

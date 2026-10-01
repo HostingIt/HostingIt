@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { auditLogs, apps } from "@/db/schema";
 import { requireApiUser } from "@/lib/api-auth";
+import { AUDIT_FILTER_PREFIXES } from "@/lib/audit-filters";
 
 const querySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -13,15 +14,6 @@ const querySchema = z.object({
     .default("all"),
   appId: z.string().uuid().optional(),
 });
-
-/** Filter groups map to action prefixes (auth also covers security + github events). */
-const FILTER_PREFIXES: Record<string, string[]> = {
-  all: [],
-  auth: ["auth.", "security.", "github."],
-  apps: ["app."],
-  billing: ["billing."],
-  account: ["account."],
-};
 
 export async function GET(request: NextRequest) {
   const authResult = await requireApiUser();
@@ -45,7 +37,7 @@ export async function GET(request: NextRequest) {
   const { page, pageSize, filter, appId } = parsed.data;
 
   const conditions: SQL[] = [eq(auditLogs.userId, authResult.user.id)];
-  const prefixes = FILTER_PREFIXES[filter];
+  const prefixes = AUDIT_FILTER_PREFIXES[filter];
   if (prefixes.length > 0) {
     const prefixMatch = or(
       ...prefixes.map((prefix) => like(auditLogs.action, `${prefix}%`))

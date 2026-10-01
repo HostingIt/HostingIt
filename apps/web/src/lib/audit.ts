@@ -25,6 +25,14 @@ export const AUDIT_ACTIONS = {
   accountDelete: "account.delete",
   githubInstall: "github.install",
   githubUninstall: "github.uninstall",
+  /** Admin actions are recorded under the affected user so they see them too. */
+  adminUserPlanChange: "admin.user_plan_change",
+  adminUserStatusChange: "admin.user_status_change",
+  adminPaymentReview: "admin.payment_review",
+  adminAppStop: "admin.app_stop",
+  adminAppLimitsEnforce: "admin.app_limits_enforce",
+  /** Bulk run, recorded under the admin who triggered it. */
+  adminLimitsEnforceAll: "admin.limits_enforce_all",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

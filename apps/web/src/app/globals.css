@@ -157,6 +157,10 @@ input:-webkit-autofill:focus {
   width: auto;
 }
 
+.field-select-full {
+  width: 100%;
+}
+
 /* Fast tab-panel entrance */
 @keyframes panel-in {
   from {

@@ -1,52 +1,52 @@
-"use client";
+import { desc, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { apps, users } from "@/db/schema";
+import { PageHeader } from "@/components/ui/page-header";
+import { InstancesTable, type AdminInstanceRow } from "@/components/admin/instances-table";
+import { timeAgo } from "@/components/security/audit-meta";
+import { getAppPublicUrl } from "@/lib/dokploy";
+import { getPlanConfig } from "@/lib/plans";
+import { formatSpec } from "@/lib/resource-limits";
 
-import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+export default async function AdminAppsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; status?: string }>;
+}) {
+  const params = await searchParams;
 
-interface AppRecord {
-  app: {
-    id: string;
-    name: string;
-    slug: string;
-    status: string;
-    githubOwner: string;
-    githubRepo: string;
-    subdomain: string;
-  };
-  userEmail: string;
-}
+  const rows = await db
+    .select({ app: apps, ownerEmail: users.email, plan: users.plan })
+    .from(apps)
+    .innerJoin(users, eq(apps.userId, users.id))
+    .orderBy(desc(apps.createdAt));
 
-export default function AdminAppsPage() {
-  const [apps, setApps] = useState<AppRecord[]>([]);
-
-  useEffect(() => {
-    fetch("/api/admin/apps")
-      .then((res) => res.json())
-      .then((data) => setApps(data.apps ?? []));
-  }, []);
+  const data: AdminInstanceRow[] = rows.map(({ app, ownerEmail, plan }) => ({
+    id: app.id,
+    name: app.name,
+    status: app.status,
+    ownerId: app.userId,
+    ownerEmail,
+    plan,
+    planLimits: formatSpec(getPlanConfig(plan)),
+    url: getAppPublicUrl(app),
+    repo: `${app.githubOwner}/${app.githubRepo}`,
+    branch: app.githubBranch,
+    customDomain: !!app.customDomain,
+    createdAgo: timeAgo(app.createdAt),
+  }));
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold">All Apps</h1>
-      <p className="mt-1 text-zinc-600">{apps.length} apps across all users</p>
-
-      <div className="mt-8 space-y-4">
-        {apps.map(({ app, userEmail }) => (
-          <Card key={app.id}>
-            <CardContent className="flex items-center justify-between p-6">
-              <div>
-                <p className="font-medium">{app.name}</p>
-                <p className="text-sm text-zinc-500">
-                  {userEmail} · {app.githubOwner}/{app.githubRepo}
-                </p>
-                <p className="text-sm text-blue-600">{app.subdomain}</p>
-              </div>
-              <Badge status={app.status} />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+    <div className="animate-fade-up space-y-8">
+      <PageHeader
+        title="Instances"
+        description="Every app container on the platform, with live CPU/RAM limit checks against the running task."
+      />
+      <InstancesTable
+        instances={data}
+        initialQuery={params.q ?? ""}
+        initialStatus={params.status ?? "all"}
+      />
     </div>
   );
 }

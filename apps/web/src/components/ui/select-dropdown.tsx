@@ -19,6 +19,7 @@ export function SelectDropdown({
   placeholder = "Choose…",
   size = "default",
   disabled = false,
+  fullWidth = false,
 }: {
   label?: string;
   value: string;
@@ -28,6 +29,8 @@ export function SelectDropdown({
   placeholder?: string;
   size?: "default" | "sm";
   disabled?: boolean;
+  /** Stretch a small select to its container (sm is content-width by default). */
+  fullWidth?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -60,6 +63,7 @@ export function SelectDropdown({
           className={cn(
             "field-select items-center text-left",
             size === "sm" && "field-select-sm",
+            fullWidth && "field-select-full",
             !selected && "text-muted"
           )}
         >

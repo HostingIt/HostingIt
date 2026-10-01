@@ -1,148 +1,33 @@
+import { Suspense } from "react";
 import Link from "next/link";
-import { and, count, desc, eq, like, or, type SQL } from "drizzle-orm";
-import {
-  Boxes,
-  CircleStop,
-  CreditCard,
-  Fingerprint,
-  Globe,
-  KeyRound,
-  Link2,
-  LogIn,
-  Play,
-  RefreshCw,
-  Rocket,
-  RotateCcw,
-  Settings,
-  ShieldAlert,
-  ShieldCheck,
-  Square,
-  Trash2,
-  Unlink,
-  Variable,
-  type LucideIcon,
-} from "lucide-react";
+import { and, count, desc, eq, gte, like, or, type SQL } from "drizzle-orm";
+import { KeyRound, LogIn, ShieldAlert, ShieldCheck, Users } from "lucide-react";
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/session";
 import { db } from "@/db";
 import { apps, auditLogs, users } from "@/db/schema";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
+import { ActivityLog } from "@/components/security/activity-log";
+import { AppFilter } from "@/components/security/app-filter";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  InstancesSection,
+  InstancesSkeleton,
+} from "@/components/security/instances-section";
+import { daysAgo, requestNow, timeAgo } from "@/components/security/audit-meta";
+import {
+  AUDIT_FILTERS,
+  AUDIT_FILTER_PREFIXES,
+  isAuditFilterKey,
+  type AuditFilterKey,
+} from "@/lib/audit-filters";
+import { describeUserAgent } from "@/lib/user-agent";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
+const FAILED_2FA_WINDOW_DAYS = 30;
 
-const FILTERS = [
-  { key: "all", label: "All" },
-  { key: "auth", label: "Sign-in & security" },
-  { key: "apps", label: "Apps" },
-  { key: "billing", label: "Billing" },
-  { key: "account", label: "Account" },
-] as const;
-
-type FilterKey = (typeof FILTERS)[number]["key"];
-
-const FILTER_PREFIXES: Record<FilterKey, string[]> = {
-  all: [],
-  auth: ["auth.", "security.", "github."],
-  apps: ["app."],
-  billing: ["billing."],
-  account: ["account."],
-};
-
-type ActionTone = "default" | "danger";
-
-const ACTION_META: Record<string, { label: string; icon: LucideIcon; tone?: ActionTone }> = {
-  "auth.login": { label: "Signed in", icon: LogIn },
-  "auth.logout": { label: "Signed out", icon: LogIn },
-  "auth.2fa.enabled": { label: "Two-factor enabled", icon: KeyRound },
-  "auth.2fa.verify_failed": {
-    label: "Failed 2FA attempt",
-    icon: ShieldAlert,
-    tone: "danger",
-  },
-  "security.provider_linked": { label: "Provider linked", icon: Link2 },
-  "security.provider_unlinked": { label: "Provider unlinked", icon: Unlink },
-  "app.create": { label: "App created", icon: Rocket },
-  "app.delete": { label: "App deleted", icon: Trash2, tone: "danger" },
-  "app.start": { label: "App started", icon: Play },
-  "app.stop": { label: "App stopped", icon: Square },
-  "app.restart": { label: "App restarted", icon: RotateCcw },
-  "app.cancel": { label: "Deployment cancelled", icon: CircleStop },
-  "app.redeploy": { label: "Redeploy triggered", icon: RefreshCw },
-  "app.env_update": { label: "Environment variables updated", icon: Variable },
-  "app.settings_update": { label: "Settings updated", icon: Settings },
-  "app.domain_update": { label: "Custom domain updated", icon: Globe },
-  "billing.request": { label: "Plan upgrade requested", icon: CreditCard },
-  "github.install": { label: "GitHub App installed", icon: Boxes },
-  "github.uninstall": { label: "GitHub App removed", icon: Boxes, tone: "danger" },
-};
-
-function metaFor(action: string) {
-  return (
-    ACTION_META[action] ?? { label: action, icon: Fingerprint, tone: "default" as const }
-  );
-}
-
-function describeMetadata(metadata: Record<string, unknown>): string | null {
-  const parts: string[] = [];
-  if (typeof metadata.provider === "string") {
-    parts.push(metadata.provider);
-  }
-  if (typeof metadata.repo === "string") {
-    parts.push(
-      typeof metadata.branch === "string"
-        ? `${metadata.repo}@${metadata.branch}`
-        : metadata.repo
-    );
-  }
-  if (typeof metadata.domain === "string") parts.push(metadata.domain);
-  if (typeof metadata.plan === "string") {
-    parts.push(
-      typeof metadata.method === "string"
-        ? `${metadata.plan} via ${metadata.method}`
-        : metadata.plan
-    );
-  }
-  if (Array.isArray(metadata.envKeys) && metadata.envKeys.length > 0) {
-    const keys = metadata.envKeys.filter((k): k is string => typeof k === "string");
-    const shown = keys.slice(0, 3).join(", ");
-    parts.push(keys.length > 3 ? `${shown} +${keys.length - 3} more` : shown);
-  }
-  if (metadata.buildSecretsChanged === true) parts.push("build secrets");
-  if (metadata.buildArgsChanged === true) parts.push("build args");
-  if (typeof metadata.branch === "string" && !parts.some((p) => p.includes("@"))) {
-    parts.push(`branch ${metadata.branch}`);
-  }
-  if (typeof metadata.installationId === "string") {
-    parts.push(`installation ${metadata.installationId}`);
-  }
-  return parts.length > 0 ? parts.join(" · ") : null;
-}
-
-function timeAgo(date: Date): string {
-  const sec = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
-  if (sec < 60) return `${sec}s ago`;
-  const m = Math.floor(sec / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
-
-function securityUrl(
-  filter: FilterKey,
-  page: number,
-  appId?: string
-): string {
+function securityUrl(filter: AuditFilterKey, page: number, appId?: string): string {
   const params = new URLSearchParams();
   if (filter !== "all") params.set("filter", filter);
   if (appId) params.set("app", appId);
@@ -151,7 +36,7 @@ function securityUrl(
   return query ? `/dashboard/security?${query}` : "/dashboard/security";
 }
 
-const EMPTY_COPY: Record<FilterKey, string> = {
+const EMPTY_COPY: Record<AuditFilterKey, string> = {
   all: "Sign-ins, deploys, and changes to your apps will show up here.",
   auth: "No sign-in or security events match this filter.",
   apps: "No app events match this filter.",
@@ -159,73 +44,132 @@ const EMPTY_COPY: Record<FilterKey, string> = {
   account: "No account events match this filter.",
 };
 
+function SummaryCard({
+  label,
+  icon: Icon,
+  value,
+  detail,
+  tone = "default",
+}: {
+  label: string;
+  icon: typeof ShieldCheck;
+  value: React.ReactNode;
+  detail: React.ReactNode;
+  tone?: "default" | "good" | "danger";
+}) {
+  return (
+    <Card className="card-elevated border-border">
+      <CardContent className="flex items-start justify-between gap-3 p-5">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted">{label}</p>
+          <p
+            className={cn(
+              "mt-1 truncate font-display text-xl font-bold",
+              tone === "danger" ? "text-red-600 dark:text-red-400" : "text-ink"
+            )}
+          >
+            {value}
+          </p>
+          <div className="mt-1.5 text-xs text-muted">{detail}</div>
+        </div>
+        <Icon
+          className={cn(
+            "h-5 w-5 shrink-0",
+            tone === "good" && "text-accent",
+            tone === "danger" && "text-red-500",
+            tone === "default" && "text-muted"
+          )}
+          aria-hidden
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
 export default async function SecurityPage({
   searchParams,
 }: {
   searchParams: Promise<{ filter?: string; page?: string; app?: string }>;
 }) {
   const session = await requireAuth();
+  const userId = session.user.id;
   const params = await searchParams;
 
-  const filter: FilterKey = FILTERS.some((f) => f.key === params.filter)
-    ? (params.filter as FilterKey)
-    : "all";
+  const filter: AuditFilterKey = isAuditFilterKey(params.filter) ? params.filter : "all";
   const requestedPage = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
 
   const ownedApps = await db
     .select({ id: apps.id, name: apps.name })
     .from(apps)
-    .where(eq(apps.userId, session.user.id));
+    .where(eq(apps.userId, userId));
   const appId =
-    params.app && ownedApps.some((a) => a.id === params.app)
-      ? params.app
-      : undefined;
+    params.app && ownedApps.some((a) => a.id === params.app) ? params.app : undefined;
 
-  const conditions: SQL[] = [eq(auditLogs.userId, session.user.id)];
-  const prefixes = FILTER_PREFIXES[filter];
+  const conditions: SQL[] = [eq(auditLogs.userId, userId)];
+  const prefixes = AUDIT_FILTER_PREFIXES[filter];
   if (prefixes.length > 0) {
-    const prefixMatch = or(
-      ...prefixes.map((prefix) => like(auditLogs.action, `${prefix}%`))
-    );
+    const prefixMatch = or(...prefixes.map((p) => like(auditLogs.action, `${p}%`)));
     if (prefixMatch) conditions.push(prefixMatch);
   }
-  if (appId) {
-    conditions.push(eq(auditLogs.appId, appId));
-  }
+  if (appId) conditions.push(eq(auditLogs.appId, appId));
   const where = and(...conditions);
 
-  const [events, [totals], [user], [{ value: appCount }]] = await Promise.all([
-    db
-      .select({
-        id: auditLogs.id,
-        action: auditLogs.action,
-        metadata: auditLogs.metadata,
-        ip: auditLogs.ip,
-        createdAt: auditLogs.createdAt,
-        appName: apps.name,
-      })
-      .from(auditLogs)
-      .leftJoin(apps, eq(auditLogs.appId, apps.id))
-      .where(where)
-      .orderBy(desc(auditLogs.createdAt), desc(auditLogs.id))
-      .limit(PAGE_SIZE)
-      .offset((requestedPage - 1) * PAGE_SIZE),
-    db.select({ value: count() }).from(auditLogs).where(where),
-    db
-      .select({
-        totpEnabled: users.totpEnabled,
-        githubId: users.githubId,
-        googleId: users.googleId,
-        createdAt: users.createdAt,
-      })
-      .from(users)
-      .where(eq(users.id, session.user.id))
-      .limit(1),
-    db
-      .select({ value: count() })
-      .from(apps)
-      .where(eq(apps.userId, session.user.id)),
-  ]);
+  const failedSince = daysAgo(FAILED_2FA_WINDOW_DAYS);
+
+  const [events, [totals], [user], [lastLogin], [{ value: failed2fa }]] =
+    await Promise.all([
+      db
+        .select({
+          id: auditLogs.id,
+          action: auditLogs.action,
+          metadata: auditLogs.metadata,
+          ip: auditLogs.ip,
+          userAgent: auditLogs.userAgent,
+          createdAt: auditLogs.createdAt,
+          appId: auditLogs.appId,
+          appName: apps.name,
+        })
+        .from(auditLogs)
+        .leftJoin(apps, eq(auditLogs.appId, apps.id))
+        .where(where)
+        .orderBy(desc(auditLogs.createdAt), desc(auditLogs.id))
+        .limit(PAGE_SIZE)
+        .offset((requestedPage - 1) * PAGE_SIZE),
+      db.select({ value: count() }).from(auditLogs).where(where),
+      db
+        .select({
+          totpEnabled: users.totpEnabled,
+          githubId: users.githubId,
+          googleId: users.googleId,
+          githubInstallationId: users.githubInstallationId,
+          plan: users.plan,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1),
+      db
+        .select({
+          createdAt: auditLogs.createdAt,
+          ip: auditLogs.ip,
+          userAgent: auditLogs.userAgent,
+          metadata: auditLogs.metadata,
+        })
+        .from(auditLogs)
+        .where(and(eq(auditLogs.userId, userId), eq(auditLogs.action, "auth.login")))
+        .orderBy(desc(auditLogs.createdAt))
+        .limit(1),
+      db
+        .select({ value: count() })
+        .from(auditLogs)
+        .where(
+          and(
+            eq(auditLogs.userId, userId),
+            eq(auditLogs.action, "auth.2fa.verify_failed"),
+            gte(auditLogs.createdAt, failedSince)
+          )
+        ),
+    ]);
 
   const total = totals?.value ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -233,238 +177,179 @@ export default async function SecurityPage({
     redirect(securityUrl(filter, pages, appId));
   }
   const page = requestedPage;
+  const firstShown = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const lastShown = Math.min(total, page * PAGE_SIZE);
+
   const providers = [user?.githubId ? "GitHub" : null, user?.googleId ? "Google" : null]
     .filter(Boolean)
-    .join(", ");
+    .join(" + ");
+  const lastLoginDevice = lastLogin ? describeUserAgent(lastLogin.userAgent) : null;
+
+  const appFilterHrefs: Record<string, string> = { "": securityUrl(filter, 1) };
+  for (const app of ownedApps) appFilterHrefs[app.id] = securityUrl(filter, 1, app.id);
 
   return (
-    <div className="animate-fade-up space-y-8">
+    <div className="animate-fade-up space-y-10">
       <PageHeader
         title="Security"
-        description="Sign-in activity, security events, and account protection for your workspace."
+        description="Account protection, the security posture of each app instance, and a full activity trail."
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="card-elevated border-border">
-          <CardContent className="flex items-start justify-between gap-3 p-5">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted">
-                Two-factor auth
-              </p>
-              <p className="mt-1 font-display text-2xl font-bold text-ink">
-                {user?.totpEnabled ? "Enabled" : "Not enrolled"}
-              </p>
-              {user?.totpEnabled ? (
-                <p className="mt-2 text-xs text-muted">
-                  Authenticator app required at sign-in
-                </p>
-              ) : (
-                <Link
-                  href="/dashboard/settings"
-                  className="mt-2 inline-block text-xs text-accent hover:underline"
-                >
-                  Set up 2FA →
-                </Link>
-              )}
-            </div>
-            <ShieldCheck
-              className={cn(
-                "h-6 w-6 shrink-0",
-                user?.totpEnabled ? "text-accent" : "text-muted"
-              )}
-              aria-hidden
-            />
-          </CardContent>
-        </Card>
-
-        <Card className="card-elevated border-border">
-          <CardContent className="p-5">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted">
-              Sign-in providers
-            </p>
-            <p className="mt-1 font-display text-2xl font-bold text-ink">
-              {providers || "None"}
-            </p>
-            <p className="mt-2 text-xs text-muted">
-              Linked in Settings → Connected providers
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="card-elevated border-border">
-          <CardContent className="p-5">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted">
-              Apps protected
-            </p>
-            <p className="mt-1 font-display text-2xl font-bold text-ink">
-              {appCount}
-            </p>
-            <p className="mt-2 text-xs text-muted">
-              Member since {user?.createdAt ? user.createdAt.getFullYear() : "—"}
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryCard
+          label="Two-factor auth"
+          icon={KeyRound}
+          tone={user?.totpEnabled ? "good" : "danger"}
+          value={user?.totpEnabled ? "Enabled" : "Not enrolled"}
+          detail={
+            user?.totpEnabled ? (
+              "Authenticator code required at every sign-in"
+            ) : (
+              <Link href="/dashboard/settings" className="text-accent hover:underline">
+                Set up 2FA →
+              </Link>
+            )
+          }
+        />
+        <SummaryCard
+          label="Sign-in providers"
+          icon={Users}
+          value={providers || "None"}
+          detail={
+            <>
+              GitHub App:{" "}
+              {user?.githubInstallationId ? "installed" : "not installed"}
+            </>
+          }
+        />
+        <SummaryCard
+          label="Last sign-in"
+          icon={LogIn}
+          value={lastLogin ? timeAgo(lastLogin.createdAt) : "—"}
+          detail={
+            lastLogin ? (
+              <span className="block truncate">
+                {lastLoginDevice?.label}
+                {lastLogin.ip ? (
+                  <span className="font-mono"> · {lastLogin.ip}</span>
+                ) : null}
+              </span>
+            ) : (
+              "No sign-ins recorded yet"
+            )
+          }
+        />
+        <SummaryCard
+          label={`Failed 2FA (${FAILED_2FA_WINDOW_DAYS} days)`}
+          icon={ShieldAlert}
+          tone={failed2fa > 0 ? "danger" : "default"}
+          value={failed2fa}
+          detail={
+            failed2fa > 0 ? (
+              <Link href={securityUrl("auth", 1)} className="text-accent hover:underline">
+                Review sign-in events →
+              </Link>
+            ) : (
+              "No failed codes. Nice."
+            )
+          }
+        />
       </div>
 
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          {FILTERS.map((f) => (
-            <Link
-              key={f.key}
-              href={securityUrl(f.key, 1, appId)}
-              aria-current={filter === f.key ? "page" : undefined}
-              className={cn(
-                "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
-                filter === f.key
-                  ? "border-accent bg-accent/10 text-ink"
-                  : "border-border text-muted hover:bg-surface-2 hover:text-ink"
-              )}
-            >
-              {f.label}
-            </Link>
-          ))}
+      <section className="space-y-4" aria-labelledby="instances-heading">
+        <div>
+          <h2 id="instances-heading" className="font-display text-xl font-semibold text-ink">
+            Instances
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            Each app runs in its own container. Limits are checked live against
+            the running container.
+          </p>
+        </div>
+        <Suspense fallback={<InstancesSkeleton count={Math.min(2, Math.max(1, ownedApps.length))} />}>
+          <InstancesSection userId={userId} plan={user?.plan ?? "free"} />
+        </Suspense>
+      </section>
+
+      <section className="space-y-4" aria-labelledby="activity-heading">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 id="activity-heading" className="font-display text-xl font-semibold text-ink">
+              Activity
+            </h2>
+            <p className="mt-1 text-sm text-muted">
+              Select an event to see the device, IP, and exactly what changed.
+            </p>
+          </div>
+          {ownedApps.length > 0 && (
+            <AppFilter apps={ownedApps} value={appId ?? ""} hrefFor={appFilterHrefs} />
+          )}
         </div>
 
-        {ownedApps.length > 1 && (
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={securityUrl(filter, 1)}
-              aria-current={!appId ? "page" : undefined}
-              className={cn(
-                "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
-                !appId
-                  ? "border-accent bg-accent/10 text-ink"
-                  : "border-border text-muted hover:bg-surface-2 hover:text-ink"
-              )}
-            >
-              All apps
-            </Link>
-            {ownedApps.map((app) => (
+        <nav
+          aria-label="Activity categories"
+          className="nice-scroll -mx-1 flex gap-1 overflow-x-auto px-1"
+        >
+          <div className="inline-flex gap-1 rounded-full border border-border bg-surface p-1">
+            {AUDIT_FILTERS.map((f) => (
               <Link
-                key={app.id}
-                href={securityUrl(filter, 1, app.id)}
-                aria-current={appId === app.id ? "page" : undefined}
+                key={f.key}
+                href={securityUrl(f.key, 1, appId)}
+                aria-current={filter === f.key ? "page" : undefined}
                 className={cn(
-                  "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
-                  appId === app.id
-                    ? "border-accent bg-accent/10 text-ink"
-                    : "border-border text-muted hover:bg-surface-2 hover:text-ink"
+                  "whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
+                  filter === f.key
+                    ? "bg-ink text-background"
+                    : "text-muted hover:bg-surface-2 hover:text-ink"
                 )}
               >
-                {app.name}
+                {f.label}
               </Link>
             ))}
           </div>
-        )}
+        </nav>
 
         <Card className="card-elevated min-w-0 overflow-hidden border-border">
-          {events.length === 0 ? (
-            <CardContent className="flex flex-col items-center py-16 text-center">
-              <ShieldCheck className="h-8 w-8 text-muted" aria-hidden />
-              <h3 className="mt-4 font-display text-xl font-bold text-ink">
-                No security activity yet
-              </h3>
-              <p className="mt-2 max-w-sm text-sm text-muted">
-                {EMPTY_COPY[filter]}
-              </p>
-            </CardContent>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Event</TableHead>
-                  <TableHead className="hidden md:table-cell">App</TableHead>
-                  <TableHead className="hidden lg:table-cell">IP</TableHead>
-                  <TableHead className="text-right">When</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {events.map((event) => {
-                  const { label, icon: Icon, tone } = metaFor(event.action);
-                  const detail = describeMetadata(event.metadata ?? {});
-                  const when = new Date(event.createdAt);
-                  const metaJson = event.metadata
-                    ? JSON.stringify(event.metadata, null, 2)
-                    : null;
-                  return (
-                    <TableRow key={event.id}>
-                      <TableCell className="max-w-[18rem] sm:max-w-md">
-                        <div className="flex items-start gap-3">
-                          <Icon
-                            className={cn(
-                              "mt-0.5 h-4 w-4 shrink-0",
-                              tone === "danger" ? "text-red-500" : "text-accent"
-                            )}
-                            aria-hidden
-                          />
-                          <div className="min-w-0">
-                            <p
-                              className={cn(
-                                "text-sm font-medium",
-                                tone === "danger" ? "text-red-500" : "text-ink"
-                              )}
-                            >
-                              {label}
-                            </p>
-                            {detail && (
-                              <p className="break-words text-xs text-muted">{detail}</p>
-                            )}
-                            {metaJson && metaJson !== "{}" && (
-                              <details className="mt-1">
-                                <summary className="cursor-pointer text-xs text-muted hover:text-ink">
-                                  Details
-                                </summary>
-                                <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md bg-surface-2 p-2 font-mono text-[11px] text-muted">
-                                  {metaJson}
-                                </pre>
-                              </details>
-                            )}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden text-sm text-muted md:table-cell">
-                        {event.appName ?? "—"}
-                      </TableCell>
-                      <TableCell className="hidden break-all font-mono text-xs text-muted lg:table-cell">
-                        {event.ip ?? "—"}
-                      </TableCell>
-                      <TableCell className="text-right text-xs text-muted">
-                        <span title={when.toISOString()}>{timeAgo(when)}</span>
-                        <p className="mt-0.5 text-[11px] text-muted/80">
-                          {when.toLocaleString()}
-                        </p>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
+          <ActivityLog
+            events={events.map((e) => ({
+              ...e,
+              createdAt: e.createdAt.toISOString(),
+            }))}
+            serverNow={requestNow()}
+            appHrefPrefix="/dashboard/apps/"
+            emptyTitle="No security activity yet"
+            emptyCopy={EMPTY_COPY[filter]}
+          />
         </Card>
 
-        {pages > 1 && (
-          <div className="flex items-center justify-between">
+        {total > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-muted">
-              {total} events · page {page} of {pages}
+              {firstShown}–{lastShown} of {total} events
             </p>
-            <div className="flex gap-2">
-              {page > 1 ? (
-                <Link
-                  href={securityUrl(filter, page - 1, appId)}
-                  className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium text-ink hover:bg-surface-2"
-                >
-                  ← Previous
-                </Link>
-              ) : null}
-              {page < pages ? (
-                <Link
-                  href={securityUrl(filter, page + 1, appId)}
-                  className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium text-ink hover:bg-surface-2"
-                >
-                  Next →
-                </Link>
-              ) : null}
-            </div>
+            {pages > 1 && (
+              <div className="flex items-center gap-2">
+                {page > 1 ? (
+                  <Link
+                    href={securityUrl(filter, page - 1, appId)}
+                    className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium text-ink hover:bg-surface-2"
+                  >
+                    ← Newer
+                  </Link>
+                ) : null}
+                <span className="text-xs text-muted">
+                  Page {page} of {pages}
+                </span>
+                {page < pages ? (
+                  <Link
+                    href={securityUrl(filter, page + 1, appId)}
+                    className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium text-ink hover:bg-surface-2"
+                  >
+                    Older →
+                  </Link>
+                ) : null}
+              </div>
+            )}
           </div>
         )}
       </section>
