@@ -11,7 +11,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { SidebarNav } from "@/components/layout/dashboard-sidebar";
 import { Modal } from "@/components/ui/modal";
 
-function UserMenu({
+export function UserMenu({
   name,
   email,
   avatarSrc,
@@ -53,7 +53,7 @@ function UserMenu({
           </div>
           {isAdmin && (
             <DropdownMenu.Item asChild>
-              <Link href="/admin/users" className={itemClass}>
+              <Link href="/admin" className={itemClass}>
                 <Shield className="h-4 w-4 text-muted" aria-hidden />
                 Admin
               </Link>

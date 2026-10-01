@@ -16,6 +16,10 @@ const statusStyles: Record<string, string> = {
   rejected: "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400",
   active: "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400",
   suspended: "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400",
+  free: "bg-zinc-100 text-zinc-800 dark:bg-zinc-500/15 dark:text-zinc-300",
+  pro: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
+  enterprise:
+    "bg-violet-100 text-violet-800 dark:bg-violet-500/15 dark:text-violet-300",
 };
 
 const dotStyles: Record<string, string> = {
@@ -31,6 +35,9 @@ const dotStyles: Record<string, string> = {
   rejected: "bg-red-500",
   active: "bg-green-500",
   suspended: "bg-red-500",
+  free: "bg-zinc-400",
+  pro: "bg-amber-500",
+  enterprise: "bg-violet-500",
 };
 
 const pulsing = new Set(["creating", "deploying", "running"]);

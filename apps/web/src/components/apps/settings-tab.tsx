@@ -336,8 +336,9 @@ export function SettingsTab({ app, onChanged }: SettingsTabProps) {
             </div>
           )}
           <p className="mt-2 text-sm text-muted">
-            Requires Pro plan or higher. Point your domain CNAME to your app
-            subdomain, and verify ownership with the TXT record we show you.
+            Custom domains arrive with the Pro plan (upcoming). Point your domain
+            CNAME to your app subdomain, and verify ownership with the TXT record
+            we show you.
           </p>
         </CardContent>
       </Card>

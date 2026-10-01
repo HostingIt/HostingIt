@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Boxes, Cpu, Globe, MemoryStick } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { PAYMENTS_ENABLED, PLANS, normalizePlan, type Plan } from "@/lib/plans";
+import { ProUpcomingBanner } from "@/components/billing/pro-upcoming-banner";
+import { PLANS, normalizePlan, type Plan } from "@/lib/plans";
+import { expectedLimits, formatCpu, formatMemory } from "@/lib/resource-limits";
 
 interface PaymentRequest {
   id: string;
@@ -29,107 +31,109 @@ export function BillingClient({
 }: BillingClientProps) {
   const plan = normalizePlan(initialPlan);
   const planConfig = PLANS[plan];
-  const proComingSoon = PLANS.pro.comingSoon || !PAYMENTS_ENABLED;
+  const limits = expectedLimits(planConfig);
+
+  const specs = [
+    {
+      label: "Apps",
+      value: planConfig.maxApps > 0 ? String(planConfig.maxApps) : "Custom",
+      icon: Boxes,
+    },
+    { label: "CPU per app", value: formatCpu(limits.nanoCpus), icon: Cpu },
+    { label: "RAM per app", value: formatMemory(limits.memoryBytes), icon: MemoryStick },
+    {
+      label: "Domains",
+      value: planConfig.customDomain ? "Custom + SSL" : "Subdomain + SSL",
+      icon: Globe,
+    },
+  ];
 
   return (
-    <div className="animate-fade-up">
+    <div className="animate-fade-up space-y-8">
       <PageHeader
         title="Billing"
         description={
           <>
-            Current plan: <strong className="text-ink">{planConfig.name}</strong>
-            {planConfig.maxApps > 0 && (
-              <>
-                {" "}
-                · up to {planConfig.maxApps} apps · {planConfig.ramMb} MB RAM/app
-              </>
-            )}
-            {" · "}
+            You&apos;re on the <strong className="text-ink">{planConfig.name}</strong>{" "}
+            plan.{" "}
             <Link href="/docs/apps" className="text-accent hover:underline">
-              Plan limits
+              How limits work
             </Link>
           </>
         }
       />
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="font-display text-lg">Your plan</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-md bg-background p-4">
-              <p className="font-display text-2xl font-bold text-ink">
-                {planConfig.name}
-              </p>
+      <Card className="card-elevated border-border">
+        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted">
+              Current plan
+            </p>
+            <CardTitle className="mt-1 font-display text-2xl">
+              {planConfig.name}
+            </CardTitle>
+            {plan === "free" && (
               <p className="mt-1 text-sm text-muted">{planConfig.description}</p>
-              <ul className="mt-4 space-y-2 text-sm text-muted">
-                {planConfig.features.map((feature) => (
-                  <li key={feature} className="flex gap-2">
-                    <span className="text-accent">→</span>
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {plan === "free" && proComingSoon && (
-              <div className="rounded-md border border-border bg-surface p-4">
-                <p className="font-medium text-ink">Pro: coming soon</p>
-                <p className="mt-1 text-sm text-muted">
-                  Paid upgrades and payment verification are not open yet. Free
-                  stays available; we&apos;ll announce Pro when billing is ready.
-                </p>
-                <Button className="mt-4" variant="outline" disabled>
-                  Coming soon
-                </Button>
+            )}
+          </div>
+          {plan === "free" && (
+            <span className="shrink-0 font-display text-2xl font-bold text-ink">
+              $0
+            </span>
+          )}
+        </CardHeader>
+        <CardContent>
+          <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {specs.map((spec) => (
+              <div
+                key={spec.label}
+                className="flex items-center gap-3 rounded-lg border border-border bg-background/60 p-3"
+              >
+                <spec.icon className="h-4 w-4 shrink-0 text-accent" aria-hidden />
+                <div className="min-w-0">
+                  <dt className="text-xs text-muted">{spec.label}</dt>
+                  <dd className="truncate text-sm font-medium text-ink">{spec.value}</dd>
+                </div>
               </div>
-            )}
+            ))}
+          </dl>
+          <p className="mt-4 text-xs text-muted">
+            Limits are enforced per running container. Builds run separately and
+            are not counted.
+          </p>
+        </CardContent>
+      </Card>
 
-            {plan !== "free" && (
-              <p className="text-sm text-muted">
-                You&apos;re on {planConfig.name}. Need changes? Contact support
-                from the dashboard.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+      {plan === "free" && <ProUpcomingBanner />}
 
+      {initialRequests.length > 0 && (
         <Card className="border-border">
           <CardHeader>
             <CardTitle className="font-display text-lg">Payment history</CardTitle>
           </CardHeader>
           <CardContent>
-            {initialRequests.length === 0 ? (
-              <p className="text-sm text-muted">
-                {proComingSoon
-                  ? "No payments yet: upgrades are coming soon."
-                  : "No payment requests yet."}
-              </p>
-            ) : (
-              <ul className="space-y-3">
-                {initialRequests.map((req, i) => (
-                  <li
-                    key={req.id}
-                    className="animate-fade-up flex items-center justify-between border border-border bg-surface p-3"
-                    style={{ animationDelay: `${i * 50}ms` }}
-                  >
-                    <div>
-                      <p className="font-medium capitalize text-ink">
-                        {normalizePlan(req.plan)}
-                      </p>
-                      <p className="text-sm text-muted">
-                        ${req.amount} via {req.method}
-                      </p>
-                    </div>
-                    <Badge status={req.status} />
-                  </li>
-                ))}
-              </ul>
-            )}
+            <ul className="divide-y divide-border">
+              {initialRequests.map((req) => (
+                <li
+                  key={req.id}
+                  className="flex items-center justify-between gap-4 py-3"
+                >
+                  <div>
+                    <p className="font-medium capitalize text-ink">
+                      {normalizePlan(req.plan)}
+                    </p>
+                    <p className="text-sm text-muted">
+                      ${req.amount} via {req.method} ·{" "}
+                      {new Date(req.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Badge status={req.status} />
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
-      </div>
+      )}
     </div>
   );
 }

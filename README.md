@@ -145,13 +145,12 @@ docker build -f apps/web/Dockerfile \
 
 ## Plans
 
-| Plan | Price | Apps | RAM/app | Custom domain |
-|------|-------|------|---------|---------------|
-| Free | $0 | 1 | 256 MB | No (subdomain) |
-| Pro | $10/mo | 5 | 512 MB | Yes |
-| Enterprise | Coming soon | Custom | Dedicated | Yes |
+| Plan | Price | Apps | Resources per app | Custom domain |
+|------|-------|------|-------------------|---------------|
+| Free | $0 | 1 | 1 vCPU · 512 MB RAM | No (subdomain) |
+| Pro | Upcoming | — | — | — |
 
-Pro is activated manually via the admin panel after UPI/PayPal/bank payment. See `/pricing` for a comparison with Railway.
+Limits live in `apps/web/src/lib/plans.ts`. They are stored on each Dokploy application and only reach Docker when the service is re-created (deploy, redeploy, start/restart from the panel, or **Admin → Overview → Enforce limits on all apps**).
 
 ## Roadmap
 

@@ -7,8 +7,9 @@ import {
   Activity,
   Boxes,
   CreditCard,
+  Crown,
   LayoutDashboard,
-  ReceiptText,
+  Server,
   Settings,
   ShieldCheck,
   Users,
@@ -56,9 +57,9 @@ const baseGroups: NavGroup[] = [
 const adminGroup: NavGroup = {
   label: "Administration",
   items: [
+    { href: "/admin", label: "Admin console", icon: Crown, exact: true },
     { href: "/admin/users", label: "Users", icon: Users },
-    { href: "/admin/payments", label: "Payments", icon: ReceiptText },
-    { href: "/admin/apps", label: "Apps", icon: Boxes },
+    { href: "/admin/apps", label: "Instances", icon: Server },
   ],
 };
 

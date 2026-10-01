@@ -99,7 +99,7 @@ export const DOCUMENT: DocsPage[] = [
         items: [
           "Set [environment variables](/docs/variables) if your app needs them, then redeploy.",
           "Tune [root directory and build type](/docs/deploys) under Settings if the first detection was wrong.",
-          "On Pro, attach a [custom domain](/docs/domains).",
+          "When Pro opens, attach a [custom domain](/docs/domains).",
         ],
       },
     ],
@@ -125,8 +125,8 @@ export const DOCUMENT: DocsPage[] = [
         type: "table",
         headers: ["Plan", "Apps", "Resources"],
         rows: [
-          ["Free", "1", "256 MB RAM · 0.25 vCPU"],
-          ["Pro", "Up to 5", "512 MB RAM · 0.5 vCPU each"],
+          ["Free", "1", "512 MB RAM · 1 vCPU"],
+          ["Pro", "Upcoming", "Announced when it opens"],
         ],
       },
       {
@@ -142,7 +142,7 @@ export const DOCUMENT: DocsPage[] = [
         type: "ul",
         items: [
           "**Free**: deploy one of them (usually the API or the full-stack package you care about most). Host the other elsewhere, or combine into a single Dockerfile.",
-          "**Pro**: create two HostingIt apps from the same repo (different root directories), then wire them with environment variables (for example the frontend's `API_URL` pointing at the backend URL).",
+          "**Pro (upcoming)**: create two HostingIt apps from the same repo (different root directories), then wire them with environment variables (for example the frontend's `API_URL` pointing at the backend URL).",
         ],
       },
       {
@@ -284,10 +284,10 @@ export const DOCUMENT: DocsPage[] = [
         type: "p",
         text: "Every app gets an HTTPS subdomain on HostingIt, for example `{{host}}`. No DNS setup required.",
       },
-      { type: "h2", text: "Custom domains (Pro)" },
+      { type: "h2", text: "Custom domains (Pro, upcoming)" },
       {
         type: "p",
-        text: "On Pro and above you can attach your own domain from the app detail page.",
+        text: "When the Pro plan opens you can attach your own domain from the app detail page.",
       },
       {
         type: "ol",
@@ -335,7 +335,7 @@ export const DOCUMENT: DocsPage[] = [
       {
         type: "ul",
         items: [
-          "Dedicated nodes for Pro and Enterprise",
+          "Dedicated capacity for paid plans",
           "Multi-region capacity as we expand",
           "Routing, SSL, and monitoring managed by HostingIt",
         ],

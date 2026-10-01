@@ -4,6 +4,10 @@ import { z } from "zod";
 import { db } from "@/db";
 import { apps } from "@/db/schema";
 import { getDokployClient } from "@/lib/dokploy";
+import {
+  restartWithPlanLimits,
+  startWithPlanLimits,
+} from "@/lib/app-resources";
 import { toClientError } from "@/lib/safe-error";
 import { AUDIT_ACTIONS, recordAuditEvent, type AuditAction } from "@/lib/audit";
 import { requireApiUser } from "@/lib/api-auth";
@@ -55,7 +59,9 @@ export async function POST(
   try {
     switch (action) {
       case "start":
-        await dokploy.startApplication(app.dokployAppId);
+        // Re-creates the service so the current plan CPU/RAM caps apply;
+        // a plain scale-up would keep whatever limits it had before.
+        await startWithPlanLimits(dokploy, app.dokployAppId, authResult.user.plan);
         await db
           .update(apps)
           .set({ status: "running", updatedAt: new Date() })
@@ -69,7 +75,7 @@ export async function POST(
           .where(eq(apps.id, app.id));
         break;
       case "restart":
-        await dokploy.reload(app.dokployAppId);
+        await restartWithPlanLimits(dokploy, app.dokployAppId, authResult.user.plan);
         await db
           .update(apps)
           .set({ status: "running", updatedAt: new Date() })

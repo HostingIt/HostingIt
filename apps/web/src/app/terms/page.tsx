@@ -3,7 +3,7 @@ import Link from "next/link";
 import { LegalPage } from "@/components/legal/legal-page";
 import {
   LEGAL_CONTACT_EMAIL,
-  LEGAL_UPDATED,
+  TERMS_UPDATED,
   TERMS_VERSION,
 } from "@/lib/legal";
 
@@ -18,7 +18,7 @@ export default function TermsPage() {
     <LegalPage
       label="Legal"
       title="Terms of Service"
-      updated={LEGAL_UPDATED}
+      updated={TERMS_UPDATED}
       version={TERMS_VERSION}
     >
       <p>
@@ -102,22 +102,14 @@ export default function TermsPage() {
             <td>Free</td>
             <td>$0</td>
             <td>1</td>
-            <td>256 MB RAM, 0.25 vCPU</td>
+            <td>512 MB RAM, 1 vCPU</td>
             <td>Subdomain on hostingit.online</td>
           </tr>
           <tr>
             <td>Pro</td>
-            <td>$10 per month when it opens</td>
-            <td>Up to 5</td>
-            <td>512 MB RAM, 0.5 vCPU</td>
-            <td>Custom domains with SSL</td>
-          </tr>
-          <tr>
-            <td>Enterprise</td>
-            <td>Talk to us</td>
-            <td>Custom</td>
-            <td>Dedicated resources</td>
-            <td>Custom domains with SSL</td>
+            <td colSpan={4}>
+              Upcoming. We will publish price and limits here before it opens.
+            </td>
           </tr>
         </tbody>
       </table>
@@ -219,8 +211,8 @@ export default function TermsPage() {
       <h2>Domains and SSL</h2>
       <p>
         Free apps get a subdomain on hostingit.online. Slugs are unique and we
-        do not reuse one after deletion. Pro adds custom domains: you point a
-        CNAME record at us, and we issue the certificate.
+        do not reuse one after deletion. Custom domains arrive with the upcoming
+        Pro plan: you point a CNAME record at us, and we issue the certificate.
       </p>
       <p>
         DNS changes take time to propagate, and we cannot control that timing.
@@ -257,9 +249,9 @@ export default function TermsPage() {
         <Link href="/status">status page</Link>.
       </p>
       <p>
-        Free accounts get community support. Pro accounts get email support when
-        the plan opens. We do not promise a response time, and we handle
-        security reports before feature requests.
+        Free accounts get community support. Paid plans will state their own
+        support terms when they open. We do not promise a response time, and we
+        handle security reports before feature requests.
       </p>
 
       <h2>Backups and data loss</h2>

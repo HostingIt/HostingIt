@@ -75,6 +75,13 @@ export interface Application {
   customGitUrl?: string | null;
   customGitBranch?: string | null;
   customGitBuildPath?: string | null;
+  /** Docker memory hard limit in bytes, stored as a string. */
+  memoryLimit?: string | null;
+  memoryReservation?: string | null;
+  /** Docker CPU limit in nanoCPUs (1 vCPU = 1e9), stored as a string. */
+  cpuLimit?: string | null;
+  cpuReservation?: string | null;
+  replicas?: number | null;
 }
 
 export interface SaveEnvironmentInput {
@@ -164,6 +171,16 @@ export interface Deployment {
 
 export type LogSince = "all" | `${number}${"s" | "m" | "h" | "d"}`;
 
+/** One Swarm task from `docker service ps` (Dokploy calls the task id `containerId`). */
+export interface ServiceTask {
+  containerId: string;
+  name?: string;
+  state?: string;
+  currentState?: string;
+  node?: string;
+  error?: string;
+}
+
 export interface AppMonitoringPoint {
   value: number | string;
   time: string;
@@ -188,15 +205,17 @@ export class DokployClient {
 
   private async request<T>(
     path: string,
-    options: RequestInit = {}
+    options: RequestInit & { timeoutMs?: number } = {}
   ): Promise<T> {
+    const { timeoutMs, ...init } = options;
     const url = `${this.baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
     const response = await fetch(url, {
-      ...options,
+      ...init,
+      ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
       headers: {
         "Content-Type": "application/json",
         "x-api-key": this.apiKey,
-        ...options.headers,
+        ...init.headers,
       },
     });
 
@@ -435,10 +454,20 @@ export class DokployClient {
     });
   }
 
-  async reload(applicationId: string): Promise<{ success: boolean }> {
-    return this.request("/api/application.reload", {
+  /**
+   * Re-creates the Swarm service from the stored config (limits, env, replicas)
+   * without rebuilding the image. Dokploy requires both ids.
+   */
+  async reload(input: {
+    applicationId: string;
+    appName: string;
+  }): Promise<boolean> {
+    return this.request<boolean>("/api/application.reload", {
       method: "POST",
-      body: JSON.stringify({ applicationId }),
+      body: JSON.stringify({
+        applicationId: input.applicationId,
+        appName: input.appName,
+      }),
     });
   }
 
@@ -544,6 +573,24 @@ export class DokployClient {
       method: "POST",
       body: JSON.stringify({ applicationId }),
     });
+  }
+
+  /** Swarm tasks for a service. Best-effort: older Dokploy builds may not expose it. */
+  async getServiceTasks(appName: string): Promise<ServiceTask[]> {
+    const data = await this.request<ServiceTask[] | { result?: ServiceTask[] }>(
+      `/api/docker.getServiceContainersByAppName?appName=${encodeURIComponent(appName)}`,
+      { method: "GET", timeoutMs: 10_000 }
+    );
+    if (Array.isArray(data)) return data;
+    return data.result ?? [];
+  }
+
+  /** Raw `docker inspect` JSON for a task or container id. */
+  async inspect(id: string): Promise<unknown> {
+    return this.request<unknown>(
+      `/api/docker.getConfig?containerId=${encodeURIComponent(id)}`,
+      { method: "GET", timeoutMs: 10_000 }
+    );
   }
 
   async getAppMonitoring(appName: string): Promise<AppMonitoring | null> {

@@ -56,7 +56,7 @@ export async function POST(
   const plan = authResult.user.plan;
   if (!canUseCustomDomain(plan)) {
     return NextResponse.json(
-      { error: "Custom domains require Pro plan or higher" },
+      { error: "Custom domains arrive with the Pro plan (upcoming)" },
       { status: 403 }
     );
   }
